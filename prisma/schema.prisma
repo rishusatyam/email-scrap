@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Mailbox {
+  id                      String         @id @default(uuid())
+  tenantId                String?        @map("tenant_id")
+  userId                  String?        @map("user_id")
+  provider                String         // 'gmail' or 'outlook'
+  emailAddress            String         @map("email_address")
+  encryptedAccessToken    String         @map("encrypted_access_token") @db.Text
+  encryptedRefreshToken   String         @map("encrypted_refresh_token") @db.Text
+  iv                      String         @db.Text
+  authTag                 String         @map("auth_tag") @db.Text
+  tokenExpiry             DateTime?      @map("token_expiry")
+  lastHistoryId           String?        @map("last_history_id")   // tracks Gmail history cursor
+  needsBackfill           Boolean        @default(false) @map("needs_backfill") // true when historyId is too old
+  createdAt               DateTime       @default(now()) @map("created_at")
+  updatedAt               DateTime       @updatedAt @map("updated_at")
+  subscriptions           Subscription[]
+
+  @@index([emailAddress])
+  @@index([userId])
+  @@map("mailboxes")
+}
+
+model Subscription {
+  id             String    @id @default(uuid())
+  provider       String    // 'gmail' or 'outlook'
+  mailboxId      String    @map("mailbox_id")
+  subscriptionId String?   @unique @map("subscription_id") // provider-side ID; null for Gmail (watch has no subscription ID)
+  clientState    String?   @map("client_state")            // null for Gmail; UUID secret for Outlook notification validation
+  expiryTime     DateTime? @map("expiry_time")
+  status         String    @default("active") // 'active' | 'expired' | 'cancelled'
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  mailbox        Mailbox   @relation(fields: [mailboxId], references: [id])
+
+  @@index([subscriptionId])
+  @@index([mailboxId])
+  @@map("subscriptions")
+}

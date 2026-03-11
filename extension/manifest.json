@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Email Scraping Assistant",
+  "version": "1.0.0",
+  "description": "Connect Gmail and Outlook to your Email Scraping platform",
+  "permissions": [
+    "storage",
+    "identity",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://localhost:3000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Connect Email"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

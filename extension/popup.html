@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect Email</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📧 Email Scraping</h1>
+      <p>Connect your mailbox</p>
+    </div>
+
+    <!-- Status Messages -->
+    <div id="status"></div>
+
+    <!-- Connection Status -->
+    <div id="connectionStatus" class="status-section" style="display: none;">
+      <div class="connected">
+        <p id="connectedEmail"></p>
+        <p id="connectedProvider"></p>
+        <button id="disconnectBtn" class="btn btn-danger">Disconnect</button>
+      </div>
+    </div>
+
+    <!-- Connection Buttons -->
+    <div id="connectionButtons" class="buttons-section">
+      <button id="gmailBtn" class="btn btn-gmail">
+        <span>🔵</span> Connect Gmail
+      </button>
+      <button id="outlookBtn" class="btn btn-outlook">
+        <span>🔵</span> Connect Outlook
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="loading" style="display: none;">
+      <div class="spinner"></div>
+      <p>Opening login...</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

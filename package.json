@@ -1,0 +1,30 @@
+{
+  "name": "email-scraping-backend",
+  "version": "1.0.0",
+  "description": "Email scraping backend with OAuth authentication",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.1",
+    "axios": "^1.13.6",
+    "bullmq": "^5.70.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "ioredis": "^5.10.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/ioredis": "^4.28.10",
+    "@types/node": "^20.10.5",
+    "prisma": "^5.7.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}
