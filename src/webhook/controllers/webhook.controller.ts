@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { enqueueGmailHistory, enqueueEmailFetch } from '../queues/queue';
 import { findSubscriptionById } from '../dao/subscription.dao';
 import { findMailboxByEmail } from '../../auth/dao/mailbox.dao';
-import { writeToFile } from '../utils/webhook-logger';
 
 // ─── Gmail Webhook ────────────────────────────────────────────────────────────
 // Google Pub/Sub pushes a base64-encoded payload containing emailAddress + historyId
