@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { normalizeGmailEmail, normalizeGmailEmailWithRaw } from '../services/email-normalizer.service';
+import { detectBookingMeta } from '../../mapper/utils/booking-meta-detection.util';
 import { GmailMessage } from '../types/email.types';
 
 export const normalizeEmailHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const { rawEmail, includeRaw } = req.body;
-console.log('api called');
+
     if (!rawEmail) {
       res.status(400).json({ error: 'Missing rawEmail in request body' });
       return;
@@ -20,9 +21,21 @@ console.log('api called');
       ? normalizeGmailEmailWithRaw(rawEmail as GmailMessage)
       : normalizeGmailEmail(rawEmail as GmailMessage);
 
+    // Detect booking meta after normalization
+    const bookingMeta = detectBookingMeta(
+      normalized.subject,
+      normalized.from,
+      normalized.cleanedHtmlBody,
+      normalized.cleanedTextBody
+    );
+
     res.status(200).json({
       success: true,
-      data: normalized,
+      data: {
+        bookingType: bookingMeta.bookingType,
+        provider: bookingMeta.provider,
+        ...normalized
+      },
     });
   } catch (error: any) {
     console.error('[NormalizerController] Error normalizing email:', error.message);

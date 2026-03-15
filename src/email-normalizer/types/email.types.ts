@@ -5,10 +5,10 @@ export interface NormalizedEmail {
   from: string;
   to: string;
   date: string;
-  cleanedTextBody?: string;
-  cleanedHtmlBody?: string;
   textBody?: string;
   htmlBody?: string;
+  cleanedTextBody?: string;
+  cleanedHtmlBody?: string;
   attachments: NormalizedAttachment[];
   raw?: any;
 }

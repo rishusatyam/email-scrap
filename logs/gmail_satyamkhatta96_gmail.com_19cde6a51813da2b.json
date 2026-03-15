@@ -7,7 +7,7 @@
     "CATEGORY_PERSONAL",
     "INBOX"
   ],
-  "snippet": "---------- Forwarded message --------- From: satyam &lt;khattasatyam@gmail.com&gt; Date: Thu, Mar 12, 2026 at 1:06 AM Subject: Fwd: MakeMyTrip bus e-ticket for booking id -NU710981159765578 To: &lt;",
+  "snippet": " MakeMyTrip bus e-ticket for booking id -NU710981159765578 To: &lt;",
   "payload": {
     "partId": "",
     "mimeType": "multipart/mixed",
@@ -99,7 +99,7 @@
       },
       {
         "name": "From",
-        "value": "satyam <khattasatyam@gmail.com>"
+        "value": "MAKEMYTRIP noreply@makemytrip.com"
       },
       {
         "name": "Date",

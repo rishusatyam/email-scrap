@@ -6,7 +6,6 @@ import { SchemaLoaderUtil } from '../utils/schema-loader.util';
 import { TypeConverterUtil } from '../utils/type-converter.util';
 import { DataCleanerUtil } from '../utils/data-cleaner.util';
 import { HashContextUtil } from '../utils/hash-context.util';
-
 export class MapperService {
   private llmService: LLMService;
   private templateRuleDAO: TemplateRuleDAO;
