@@ -31,7 +31,7 @@ export class MapperService {
     let template: string;
     if (!templateData) {
       console.log(`[Mapper] No template found for provider: ${request.provider}. Calling LLM...`);
-      const generatedTemplate = await this.llmService.generateTemplate(body, schema, request.provider);
+      const generatedTemplate = await this.llmService.generateTemplate(body, schema, request.provider, request.bookingType);
       template = generatedTemplate.template;
       
       // Extract hashTable from generated template
@@ -59,87 +59,108 @@ export class MapperService {
       
       console.log(`\n[Validation] Extraction success rate: ${extractedFields}/${totalFields} (${(successRate * 100).toFixed(1)}%)`);
       
-      if (successRate >= 0.8) {
-        console.log('[Validation] ✓ Template validation PASSED: Extraction rate >80%');
+      if (successRate < 0.8) {
+        // Extraction rate too low - email format has changed, regenerate immediately
+        console.log('[Validation] ✗ Extraction rate <80% - Email format has changed');
+        console.log('[Mapper] Regenerating template...');
         
-        // Create annotated email by replacing values with placeholders
-        let annotatedEmail = body;
-        for (const [fieldPath, value] of Object.entries(extractedValues)) {
-          if (value) {
-            annotatedEmail = annotatedEmail.replace(value, `{${fieldPath}}`);
-          }
-        }
+        const generatedTemplate = await this.llmService.generateTemplate(body, schema, request.provider, request.bookingType);
+        template = generatedTemplate.template;
         
-        // Use same function to extract hashTable from annotated email
-        console.log('\n[Validation] Extracting prev/next words from email...');
-        const emailHashTable = HashContextUtil.extractHashTable(annotatedEmail);
+        const newHashTable = HashContextUtil.extractHashTable(template);
+        console.log(`[Mapper] Generated new template with ${Object.keys(newHashTable).length} field contexts`);
         
-        // Compare with stored hashTable
-        let matchCount = 0;
-        let totalCount = 0;
+        await this.templateRuleDAO.create(request.provider, template, newHashTable);
+        console.log('[Mapper] Updated template and hashTable in database');
         
-        for (const [fieldPath, storedContext] of Object.entries(templateData.hashTable)) {
-          const emailContext = emailHashTable[fieldPath];
-          if (!emailContext) continue;
-          
-          totalCount++;
-          
-          const prevMatch = emailContext.prevWords === storedContext.prevWords;
-          const nextMatch = emailContext.nextWords === storedContext.nextWords;
-          
-          if (prevMatch && nextMatch) {
-            matchCount++;
-            console.log(`[Validation]   ${fieldPath}: ✓ Match`);
-          } else {
-            console.log(`[Validation]   ${fieldPath}: ✗ Mismatch`);
-            if (!prevMatch) {
-              console.log(`[Validation]     Prev - Stored: "${storedContext.prevWords}" | Email: "${emailContext.prevWords}"`);
-            }
-            if (!nextMatch) {
-              console.log(`[Validation]     Next - Stored: "${storedContext.nextWords}" | Email: "${emailContext.nextWords}"`);
-            }
-          }
-        }
+        const newExtractedValues = TemplateMatcherUtil.extractValues(body, template);
+        console.log('[Mapper] Extracted values with new template:');
+        console.log(JSON.stringify(newExtractedValues, null, 2));
         
-        if (totalCount > 0) {
-          const matchRate = (matchCount / totalCount) * 100;
-          console.log(`\n[Validation] Word match: ${matchCount}/${totalCount} (${matchRate.toFixed(1)}%)`);
-          
-          if (matchRate < 90) {
-            console.log('[Validation] ✗ Word match rate <90% - Email format has changed');
-            console.log('[Mapper] Regenerating template...');
-            
-            // Call LLM to regenerate template
-            const generatedTemplate = await this.llmService.generateTemplate(body, schema, request.provider);
-            template = generatedTemplate.template;
-            
-            // Extract new hashTable
-            const newHashTable = HashContextUtil.extractHashTable(template);
-            console.log(`[Mapper] Generated new template with ${Object.keys(newHashTable).length} field contexts`);
-            
-            // Update database with new template and hashTable
-            await this.templateRuleDAO.create(request.provider, template, newHashTable);
-            console.log('[Mapper] Updated template and hashTable in database');
-            
-            // Re-extract values with new template
-            const newExtractedValues = TemplateMatcherUtil.extractValues(body, template);
-            console.log('[Mapper] Extracted values with new template:');
-            console.log(JSON.stringify(newExtractedValues, null, 2));
-            
-            // Use new extracted values
-            const mappedData = TemplateMatcherUtil.buildNestedObject(newExtractedValues);
-            const cleanedData = DataCleanerUtil.cleanAllValues(mappedData);
-            const typedData = TypeConverterUtil.applyTypeConversion(cleanedData, schema);
-            return SchemaLoaderUtil.fillMissingFields(typedData, schema);
-          } else {
-            console.log('[Validation] ✓ Word match rate ≥90% - Template is valid');
-          }
-        }
-      } else {
-        console.log('[Validation] ⚠ Template validation WARNING: Extraction rate <80% - email format may have changed');
+        const mappedData = TemplateMatcherUtil.buildNestedObject(newExtractedValues);
+        const cleanedData = DataCleanerUtil.cleanAllValues(mappedData);
+        const typedData = TypeConverterUtil.applyTypeConversion(cleanedData, schema);
+        return SchemaLoaderUtil.fillMissingFields(typedData, schema);
       }
-      console.log('');
+      
+      // Extraction rate ≥80% - proceed to word validation
+      console.log('[Validation] ✓ Extraction rate ≥80% - Checking prev/next words...');
+      
+      // Create annotated email by replacing values with placeholders
+      let annotatedEmail = body;
+      for (const [fieldPath, value] of Object.entries(extractedValues)) {
+        if (value) {
+          annotatedEmail = annotatedEmail.replace(value, `{${fieldPath}}`);
+        }
+      }
+      
+      // Use same function to extract hashTable from annotated email
+      console.log('\n[Validation] Extracting prev/next words from email...');
+      const emailHashTable = HashContextUtil.extractHashTable(annotatedEmail);
+      
+      // Compare with stored hashTable
+      let matchCount = 0;
+      let totalCount = 0;
+      
+      for (const [fieldPath, storedContext] of Object.entries(templateData.hashTable)) {
+        const emailContext = emailHashTable[fieldPath];
+        if (!emailContext) continue;
+        
+        totalCount++;
+        
+        const prevMatch = emailContext.prevWords === storedContext.prevWords;
+        const nextMatch = emailContext.nextWords === storedContext.nextWords;
+        
+        if (prevMatch && nextMatch) {
+          matchCount++;
+          console.log(`[Validation]   ${fieldPath}: ✓ Match`);
+        } else {
+          console.log(`[Validation]   ${fieldPath}: ✗ Mismatch`);
+          if (!prevMatch) {
+            console.log(`[Validation]     Prev - Stored: "${storedContext.prevWords}" | Email: "${emailContext.prevWords}"`);
+          }
+          if (!nextMatch) {
+            console.log(`[Validation]     Next - Stored: "${storedContext.nextWords}" | Email: "${emailContext.nextWords}"`);
+          }
+        }
+      }
+      
+      if (totalCount > 0) {
+        const matchRate = (matchCount / totalCount) * 100;
+        console.log(`\n[Validation] Word match: ${matchCount}/${totalCount} (${matchRate.toFixed(1)}%)`);
+        
+        if (matchRate < 90) {
+          console.log('[Validation] ✗ Word match rate <90% - Email format has changed');
+          console.log('[Mapper] Regenerating template...');
+          
+          // Call LLM to regenerate template
+          const generatedTemplate = await this.llmService.generateTemplate(body, schema, request.provider, request.bookingType);
+          template = generatedTemplate.template;
+          
+          // Extract new hashTable
+          const newHashTable = HashContextUtil.extractHashTable(template);
+          console.log(`[Mapper] Generated new template with ${Object.keys(newHashTable).length} field contexts`);
+          
+          // Update database with new template and hashTable
+          await this.templateRuleDAO.create(request.provider, template, newHashTable);
+          console.log('[Mapper] Updated template and hashTable in database');
+          
+          // Re-extract values with new template
+          const newExtractedValues = TemplateMatcherUtil.extractValues(body, template);
+          console.log('[Mapper] Extracted values with new template:');
+          console.log(JSON.stringify(newExtractedValues, null, 2));
+          
+          // Use new extracted values
+          const mappedData = TemplateMatcherUtil.buildNestedObject(newExtractedValues);
+          const cleanedData = DataCleanerUtil.cleanAllValues(mappedData);
+          const typedData = TypeConverterUtil.applyTypeConversion(cleanedData, schema);
+          return SchemaLoaderUtil.fillMissingFields(typedData, schema);
+        } else {
+          console.log('[Validation] ✓ Word match rate ≥90% - Template is valid');
+        }
+      }
     }
+    console.log('');
 
     // Step 3: Build nested object from flat extracted values
     const mappedData = TemplateMatcherUtil.buildNestedObject(extractedValues);
@@ -156,12 +177,12 @@ export class MapperService {
 
   private selectBody(request: MapEmailRequest): string | null {
     if (request.cleanedHtmlBody) {
-      console.log('[Mapper] Using cleanedHtmlBody');
+      console.log('[Mapper] Using cleaned HTML body');
       return request.cleanedHtmlBody;
     }
 
     if (request.cleanedTextBody) {
-      console.log('[Mapper] Using cleanedTextBody');
+      console.log('[Mapper] Using cleaned text body');
       return request.cleanedTextBody;
     }
 
