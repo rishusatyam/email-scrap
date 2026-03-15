@@ -1,0 +1,232 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.travlrid.com/flight-booking/v1",
+  "title": "Flight Booking",
+  "description": "Flight booking with complete travel details",
+  "type": "object",
+  "required": ["bookingId", "bookingType", "profile_id"],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Profile ID this segment belongs to"
+    },
+    "bookingId": {
+      "type": "string",
+      "description": "Unique identifier for the flight booking"
+    },
+    "bookingType": {
+      "type": "string",
+      "enum": ["flight"],
+      "default": "flight"
+    },
+    "bookingReference": {
+      "type": "string",
+      "description": "Booking confirmation number (PNR)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["confirmed", "pending", "cancelled", "completed"],
+      "default": "confirmed"
+    },
+    "flight": {
+      "type": "object",
+      "properties": {
+        "airline": {
+          "type": "string",
+          "description": "Airline name"
+        },
+        "airlineCode": {
+          "type": "string",
+          "description": "IATA airline code"
+        },
+        "flightNumber": {
+          "type": "string"
+        },
+        "operatingAirline": {
+          "type": "string",
+          "description": "Operating carrier if codeshare"
+        }
+      },
+      "required": ["airline", "airlineCode", "flightNumber"]
+    },
+    "departure": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": "string",
+          "description": "Airport name"
+        },
+        "airportCode": {
+          "type": "string",
+          "description": "IATA airport code"
+        },
+        "terminal": {
+          "type": "string"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "scheduledTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actualTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["airport", "airportCode", "scheduledTime"]
+    },
+    "arrival": {
+      "type": "object",
+      "properties": {
+        "airport": {
+          "type": "string",
+          "description": "Airport name"
+        },
+        "airportCode": {
+          "type": "string",
+          "description": "IATA airport code"
+        },
+        "terminal": {
+          "type": "string"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "scheduledTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actualTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["airport", "airportCode", "scheduledTime"]
+    },
+    "passenger": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "ticketNumber": {
+          "type": "string"
+        },
+        "seatNumber": {
+          "type": "string"
+        },
+        "cabin": {
+          "type": "string",
+          "enum": ["economy", "premium_economy", "business", "first"]
+        },
+        "boardingGroup": {
+          "type": "string"
+        }
+      }
+    },
+    "fare": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "fareClass": {
+          "type": "string"
+        },
+        "fareType": {
+          "type": "string",
+          "enum": ["economy", "business", "first", "premium_economy"]
+        },
+        "taxes": {
+          "type": "number"
+        },
+        "fees": {
+          "type": "number"
+        }
+      }
+    },
+    "baggage": {
+      "type": "object",
+      "properties": {
+        "checked": {
+          "type": "object",
+          "properties": {
+            "allowance": {
+              "type": "integer",
+              "description": "Number of bags"
+            },
+            "weight": {
+              "type": "integer",
+              "description": "Weight limit in kg"
+            }
+          }
+        },
+        "cabin": {
+          "type": "object",
+          "properties": {
+            "allowance": {
+              "type": "integer"
+            },
+            "dimensions": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "properties": {
+        "meal": {
+          "type": "string"
+        },
+        "entertainment": {
+          "type": "boolean"
+        },
+        "wifi": {
+          "type": "boolean"
+        },
+        "specialRequests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Booking source (GDS, OBT, direct)"
+        },
+        "bookingDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

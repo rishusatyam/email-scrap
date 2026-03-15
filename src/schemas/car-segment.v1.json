@@ -1,0 +1,219 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.travlrid.com/car-booking/v1",
+  "title": "Car Booking",
+  "description": "Car rental booking with booking details",
+  "type": "object",
+  "required": ["bookingId", "bookingType", "vehicle", "pickup", "dropoff", "profile_id"],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Profile ID this segment belongs to"
+    },
+    "bookingId": {
+      "type": "string",
+      "description": "Unique identifier for the car booking"
+    },
+    "bookingType": {
+      "type": "string",
+      "enum": ["car"],
+      "default": "car"
+    },
+    "bookingReference": {
+      "type": "string",
+      "description": "Car rental confirmation number"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["confirmed", "pending", "cancelled", "completed"],
+      "default": "confirmed"
+    },
+    "rentalCompany": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "contactInfo": {
+          "type": "object",
+          "properties": {
+            "phone": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            }
+          }
+        }
+      },
+      "required": ["name"]
+    },
+    "vehicle": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["economy", "compact", "midsize", "fullsize", "suv", "luxury", "van"]
+        },
+        "make": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "transmission": {
+          "type": "string",
+          "enum": ["automatic", "manual"]
+        },
+        "fuelType": {
+          "type": "string",
+          "enum": ["petrol", "diesel", "electric", "hybrid"]
+        },
+        "passengerCapacity": {
+          "type": "integer"
+        },
+        "luggageCapacity": {
+          "type": "integer"
+        }
+      }
+    },
+    "pickup": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "dateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "locationType": {
+          "type": "string",
+          "enum": ["airport", "city", "hotel", "station"]
+        }
+      },
+      "required": ["location", "dateTime"]
+    },
+    "dropoff": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "dateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "locationType": {
+          "type": "string",
+          "enum": ["airport", "city", "hotel", "station"]
+        }
+      },
+      "required": ["location", "dateTime"]
+    },
+    "driver": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "licenseNumber": {
+          "type": "string"
+        },
+        "age": {
+          "type": "integer"
+        }
+      }
+    },
+    "rate": {
+      "type": "object",
+      "properties": {
+        "totalAmount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "dailyRate": {
+          "type": "number"
+        },
+        "numberOfDays": {
+          "type": "integer"
+        },
+        "taxes": {
+          "type": "number"
+        },
+        "fees": {
+          "type": "number"
+        }
+      }
+    },
+    "insurance": {
+      "type": "object",
+      "properties": {
+        "coverage": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cost": {
+          "type": "number"
+        }
+      }
+    },
+    "extras": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Additional items (GPS, child seat, etc.)"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "bookingDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,22 @@
+mappper - validation one inpuut field so they cannot be null while sending to llm ....
+
+
+
+can be checked later if needed
+1. Database Issues
+❌ Multiple PrismaClient instances - Should use singleton
+❌ No connection pooling - Can exhaust connections
+❌ No transaction support - Race condition if two requests for same provider
+❌ No error handling - DB errors crash the service
+2. Schema Loading Issues
+❌ Path resolution - __dirname might break in production
+❌ No caching - Reads file every request
+❌ No error handling - Missing file crashes service
+3. Rule Application Issues
+❌ No type conversion - Everything is string
+❌ No validation - Accepts any extracted value
+❌ First match only - If label appears twice, uses first
+❌ No fallback - If extraction fails, returns null
+4. Missing Fields Logic Issues
+❌ Only top-level - Doesn't handle nested schema fields
+❌ Shallow merge - Can overwrite nested objects

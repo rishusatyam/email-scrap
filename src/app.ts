@@ -3,6 +3,7 @@ import { authRoutes } from './auth';
 import { webhookRoutes } from './webhook';
 import { subscriptionRoutes } from './subscriptions';
 import { normalizerRoutes } from './email-normalizer';
+import { mapperRoutes } from './mapper';
 
 const app: Express = express();
 
@@ -15,6 +16,7 @@ app.use('/auth', authRoutes);
 app.use('/webhook', webhookRoutes);
 app.use('/subscriptions', subscriptionRoutes);
 app.use('/email', normalizerRoutes);
+app.use('/mapper', mapperRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

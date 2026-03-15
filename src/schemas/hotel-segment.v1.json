@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.travlrid.com/hotel-booking/v1",
+  "title": "Hotel Booking",
+  "description": "Hotel accommodation booking with booking details",
+  "type": "object",
+  "required": ["bookingId", "bookingType", "hotel", "profile_id"],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Profile ID this segment belongs to"
+    },
+    "bookingId": {
+      "type": "string",
+      "description": "Unique identifier for the hotel booking"
+    },
+    "bookingType": {
+      "type": "string",
+      "enum": ["hotel"],
+      "default": "hotel"
+    },
+    "bookingReference": {
+      "type": "string",
+      "description": "Hotel confirmation number"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["confirmed", "pending", "cancelled", "completed"],
+      "default": "confirmed"
+    },
+    "hotel": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "chain": {
+          "type": "string",
+          "description": "Hotel chain name"
+        },
+        "starRating": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "address": {
+          "type": "object",
+          "properties": {
+            "street": {
+              "type": "string"
+            },
+            "city": {
+              "type": "string"
+            },
+            "state": {
+              "type": "string"
+            },
+            "country": {
+              "type": "string"
+            },
+            "postalCode": {
+              "type": "string"
+            }
+          }
+        },
+        "contactInfo": {
+          "type": "object",
+          "properties": {
+            "phone": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string",
+              "format": "email"
+            }
+          }
+        }
+      },
+      "required": ["name"]
+    },
+    "room": {
+      "type": "object",
+      "properties": {
+        "roomType": {
+          "type": "string",
+          "enum": ["single", "double", "twin", "suite", "deluxe"]
+        },
+        "bedType": {
+          "type": "string",
+          "enum": ["single", "double", "twin", "king", "queen"]
+        },
+        "roomNumber": {
+          "type": "string"
+        },
+        "smokingPreference": {
+          "type": "string",
+          "enum": ["non_smoking", "smoking"]
+        }
+      }
+    },
+    "stay": {
+      "type": "object",
+      "properties": {
+        "checkIn": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "checkOut": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "numberOfNights": {
+          "type": "integer"
+        },
+        "numberOfGuests": {
+          "type": "integer"
+        }
+      },
+      "required": ["checkIn", "checkOut"]
+    },
+    "guest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "loyaltyNumber": {
+          "type": "string"
+        }
+      }
+    },
+    "rate": {
+      "type": "object",
+      "properties": {
+        "totalAmount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "nightlyRate": {
+          "type": "number"
+        },
+        "taxes": {
+          "type": "number"
+        },
+        "fees": {
+          "type": "number"
+        },
+        "rateType": {
+          "type": "string",
+          "enum": ["standard", "corporate", "government", "package"]
+        },
+        "cancellationPolicy": {
+          "type": "string"
+        }
+      }
+    },
+    "amenities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Available amenities (wifi, parking, breakfast, etc.)"
+    },
+    "specialRequests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "Booking source"
+        },
+        "bookingDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

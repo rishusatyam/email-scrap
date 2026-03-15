@@ -3,16 +3,21 @@ import * as cheerio from 'cheerio';
 export const cleanHtml = (html: string): string => {
   if (!html) return '';
 
-  const $ = cheerio.load(html);
+  const $ = cheerio.load(html, {
+    decodeEntities: true,
+  });
 
   $('script').remove();
   $('style').remove();
-  $('img').remove();
+  $('img').replaceWith('[image]');
   $('svg').remove();
   $('footer').remove();
   $('.gmail_signature').remove();
 
   $('br').replaceWith('\n');
+  $('div').append('\n');
+  $('p').append('\n');
+  $('tr').append('\n');
   
   $('table').each((_, table) => {
     $(table).find('tr').each((_, row) => {
@@ -24,13 +29,9 @@ export const cleanHtml = (html: string): string => {
         }
       });
       if (cells.length > 0) {
-        $(row).replaceWith('\n' + cells.join(' ') + '\n');
+        $(row).replaceWith(cells.join(' | ') + '\n');
       }
     });
-  });
-
-  $('p').each((_, el) => {
-    $(el).append('\n');
   });
 
   let text = $('body').text();
@@ -95,11 +96,16 @@ export const cleanHtml = (html: string): string => {
 
   text = cleanedLines.join('\n');
 
-  text = text.replace(/\[image:[^\]]+\]/gi, '');
+  text = text.replace(/\[image:[^\]]+\]/gi, '[image]');
   text = text.replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/g, '');
   text = text.replace(/cid:[^\s]+/g, '');
   text = text.replace(/utm_[a-z]+=[^\s&]+/g, '');
   text = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, '<');
+  text = text.replace(/&gt;/g, '>');
+  text = text.replace(/&quot;/g, '"');
 
   const stopPhrases = [
     'Online Cancellation',
@@ -118,8 +124,10 @@ export const cleanHtml = (html: string): string => {
   }
 
   text = text.replace(/\r\n/g, '\n');
+  text = text.replace(/\r/g, '\n');
   text = text.replace(/\n{3,}/g, '\n\n');
-  text = text.split('\n').map(line => line.trim()).join('\n');
+  text = text.replace(/\s+/g, ' ');
+  text = text.split('\n').map(line => line.trim()).filter(line => line.length > 0).join('\n');
   text = text.trim();
 
   return text;

@@ -1,0 +1,207 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.travlrid.com/bus-booking/v1",
+  "title": "Bus Booking",
+  "description": "Bus travel booking with booking details",
+  "type": "object",
+  "required": ["bookingId", "bookingType", "bus", "departure", "arrival", "profile_id"],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Profile ID this segment belongs to"
+    },
+    "bookingId": {
+      "type": "string",
+      "description": "Unique identifier for the bus booking"
+    },
+    "bookingType": {
+      "type": "string",
+      "enum": ["bus"],
+      "default": "bus"
+    },
+    "bookingReference": {
+      "type": "string",
+      "description": "Bus booking confirmation number"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["confirmed", "pending", "cancelled", "completed"],
+      "default": "confirmed"
+    },
+    "bus": {
+      "type": "object",
+      "properties": {
+        "operator": {
+          "type": "string",
+          "description": "Bus operator name"
+        },
+        "busNumber": {
+          "type": "string"
+        },
+        "busType": {
+          "type": "string",
+          "description": "Bus type - common values: standard, express, luxury, sleeper, A/C-Seater. Custom values are also allowed."
+        },
+        "amenities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["wifi", "ac", "restroom", "charging", "entertainment", "meals", "reclining_seats"]
+          }
+        }
+      },
+      "required": ["operator", "busNumber"]
+    },
+    "departure": {
+      "type": "object",
+      "properties": {
+        "terminal": {
+          "type": "string",
+          "description": "Bus terminal or station name"
+        },
+        "terminalCode": {
+          "type": "string"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "scheduledTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actualTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["terminal", "city", "scheduledTime"]
+    },
+    "arrival": {
+      "type": "object",
+      "properties": {
+        "terminal": {
+          "type": "string",
+          "description": "Bus terminal or station name"
+        },
+        "terminalCode": {
+          "type": "string"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "scheduledTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actualTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["terminal", "city", "scheduledTime"]
+    },
+    "passenger": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "ticketNumber": {
+          "type": "string"
+        },
+        "seatNumber": {
+          "type": "string"
+        },
+        "passengerType": {
+          "type": "string",
+          "enum": ["adult", "child", "senior", "student"]
+        }
+      }
+    },
+    "fare": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "fareType": {
+          "type": "string",
+          "enum": ["standard", "flexible", "non_refundable"]
+        }
+      }
+    },
+    "stops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "terminal": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "arrivalTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "departureTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stopDuration": {
+            "type": "string",
+            "description": "Duration in ISO 8601 format (e.g., PT15M)"
+          }
+        }
+      }
+    },
+    "baggage": {
+      "type": "object",
+      "properties": {
+        "allowance": {
+          "type": "object",
+          "properties": {
+            "pieces": {
+              "type": "integer"
+            },
+            "weightKg": {
+              "type": "number"
+            }
+          }
+        },
+        "checkedBags": {
+          "type": "integer"
+        },
+        "carryOn": {
+          "type": "integer"
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}
