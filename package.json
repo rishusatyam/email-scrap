@@ -20,7 +20,8 @@
     "express": "^4.18.2",
     "html-to-text": "^9.0.5",
     "ioredis": "^5.10.0",
-    "openai": "^6.27.0"
+    "openai": "^6.27.0",
+    "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.31",
