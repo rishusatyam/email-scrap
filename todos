@@ -1,22 +1,35 @@
-mappper - validation one inpuut field so they cannot be null while sending to llm ....
+
+task - to be done (today)
+1. linked the pdf extractor with gmail normalizer -------------> done (testing left)
+2. organize the respocne that what needed to be sended to the mapper servide(means clean the respocne into clean struture ) and based on it fix the input validation of tha mapping service 
+3. link the webhook service with email-normalizing service pass the same acces token that it use for fetching the data email becasue email-normalizer will also use it to fetch the pdf  
+4. link the gmail cleaning service with mapping service (most important)
+5. also if needed link auth and subscription part so when user login subcscription should be done that time 
+6. after linking test all once 
+7. aftr completing all stuff need a discussion with ayush that  pdf of htmlbody ? beacsue both have same data so we only need to send one 
 
 
 
-can be checked later if needed
-1. Database Issues
-❌ Multiple PrismaClient instances - Should use singleton
-❌ No connection pooling - Can exhaust connections
-❌ No transaction support - Race condition if two requests for same provider
-❌ No error handling - DB errors crash the service
-2. Schema Loading Issues
-❌ Path resolution - __dirname might break in production
-❌ No caching - Reads file every request
-❌ No error handling - Missing file crashes service
-3. Rule Application Issues
-❌ No type conversion - Everything is string
-❌ No validation - Accepts any extracted value
-❌ First match only - If label appears twice, uses first
-❌ No fallback - If extraction fails, returns null
-4. Missing Fields Logic Issues
-❌ Only top-level - Doesn't handle nested schema fields
-❌ Shallow merge - Can overwrite nested objects
+**Today’s Tasks (Priority Order)**
+
+1. Link the PDF extractor with the Gmail normalizer.
+
+2. Organize the response that needs to be sent to the mapper service
+
+   * Clean the response into a proper structured format.
+   * Based on that, fix the input validation of the mapping service.
+
+3. Link the webhook service with the email-normalizing service.
+
+4. Link the Gmail cleaning service with the mapping service (**most important**).
+
+5. If needed, link auth and subscription flow
+
+   * Ensure subscription is handled at login time.
+
+6. After completing integrations, test everything end-to-end once.
+
+7. After all tasks are done, discuss with Ayush:
+
+   * Whether to use **PDF** or **HTML body** (since both contain the same data).
+   * Decide to send only one source going forward.

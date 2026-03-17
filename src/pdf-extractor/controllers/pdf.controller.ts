@@ -13,12 +13,28 @@ interface ExtractPdfRequest {
 export const extractPdfHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     const { messageId, attachmentId, accessToken } = req.body as ExtractPdfRequest;
-
-    // Validate input
-    if (!messageId || !attachmentId || !accessToken) {
+   console.log("accessToken", accessToken);
+    // Validate input - check each field individually
+    if (!messageId) {
       res.status(400).json({
         success: false,
-        error: 'Missing required fields: messageId, attachmentId, accessToken'
+        error: 'Missing required field: messageId'
+      });
+      return;
+    }
+
+    if (!attachmentId) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing required field: attachmentId'
+      });
+      return;
+    }
+
+    if (!accessToken) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing required field: accessToken'
       });
       return;
     }
@@ -42,7 +58,7 @@ export const extractPdfHandler = async (req: Request, res: Response): Promise<vo
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ Handler error: ${errorMessage}`);
+    console.error(`Handler error: ${errorMessage}`);
     
     res.status(500).json({
       success: false,

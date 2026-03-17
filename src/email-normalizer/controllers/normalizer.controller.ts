@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
-import { normalizeGmailEmail, normalizeGmailEmailWithRaw } from '../services/email-normalizer.service';
-import { detectBookingMeta } from '../../mapper/utils/booking-meta-detection.util';
+import { processGmailEmail } from '../services/email-normalizer.service';
 import { GmailMessage } from '../types/email.types';
+
+const TEST_GMAIL_ACCESS_TOKEN = process.env.GMAIL_ACCESS_TOKEN || '';
 
 export const normalizeEmailHandler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { rawEmail, includeRaw } = req.body;
+    const { rawEmail, includeRaw, accessToken } = req.body;
 
     if (!rawEmail) {
       res.status(400).json({ error: 'Missing rawEmail in request body' });
@@ -17,25 +18,15 @@ export const normalizeEmailHandler = async (req: Request, res: Response): Promis
       return;
     }
 
-    const normalized = includeRaw 
-      ? normalizeGmailEmailWithRaw(rawEmail as GmailMessage)
-      : normalizeGmailEmail(rawEmail as GmailMessage);
+    const normalized = await processGmailEmail(rawEmail as GmailMessage, {
+      includeRaw,
+      accessToken: accessToken || TEST_GMAIL_ACCESS_TOKEN,
+    });
 
-    // Detect booking meta after normalization
-    const bookingMeta = detectBookingMeta(
-      normalized.subject,
-      normalized.from,
-      normalized.cleanedHtmlBody,
-      normalized.cleanedTextBody
-    );
-
+    console.log(`[NormalizerController] Sending successful response | messageId=${rawEmail.id} | hasPdfData=${!!normalized.pdfData}`);
     res.status(200).json({
       success: true,
-      data: {
-        bookingType: bookingMeta.bookingType,
-        provider: bookingMeta.provider,
-        ...normalized
-      },
+      data: normalized,
     });
   } catch (error: any) {
     console.error('[NormalizerController] Error normalizing email:', error.message);

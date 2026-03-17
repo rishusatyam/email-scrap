@@ -1,5 +1,7 @@
 import axios from 'axios';
 import * as mailboxDao from '../../auth/dao/mailbox.dao';
+import { processGmailEmail } from '../../email-normalizer/services/email-normalizer.service';
+import { GmailMessage } from '../../email-normalizer/types/email.types';
 import { writeToFile } from '../utils/webhook-logger';
 
 interface FetchEmailData {
@@ -47,6 +49,14 @@ export const fetchEmail = async ({ provider, emailAddress, messageId }: FetchEma
     console.log(`[EmailFetch] Successfully fetched email | messageId=${messageId} | provider=${provider}`);
     const fileName = `${provider}_${emailAddress.replace('@', '_')}_${messageId}.json`;
     writeToFile(fileName, rawEmail);
+
+    if (provider === 'gmail') {
+      const normalizedEmail = await processGmailEmail(rawEmail as GmailMessage, {
+        accessToken,
+      });
+      const normalizedFileName = `normalized_${provider}_${emailAddress.replace('@', '_')}_${messageId}.json`;
+      writeToFile(normalizedFileName, normalizedEmail);
+    }
   } catch (error: any) {
     console.error(`[EmailFetch] Error fetching email: ${error.message}`);
     throw error;
