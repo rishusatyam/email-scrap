@@ -5,6 +5,8 @@ import { extractAttachments } from '../utils/attachment-extractor';
 import { cleanEmailBodies } from './email-cleaner.service';
 import { detectBookingMeta } from '../../mapper/utils/booking-meta-detection.util';
 import { extractPdfFromGmail } from '../../pdf-extractor/services/pdf.service';
+import { MapperService } from '../../mapper/services/mapper.service';
+import { logMappedEmail } from '../../mapper/utils/mapper-logger';
 
 export interface ProcessedNormalizedEmail extends NormalizedEmail {
   bookingType: string;
@@ -102,6 +104,26 @@ export const processGmailEmail = async (
   }
 
   console.log(`[EmailNormalizer] Normalization completed for messageId=${rawEmail.id}`);
+
+  // Link with mapper service - run mapping but don't return it
+  try {
+    console.log(`[EmailNormalizer] Calling mapper service for messageId=${rawEmail.id}`);
+    const mapperService = new MapperService();
+    const mappedData = await mapperService.mapEmail({
+      subject: normalized.subject,
+      cleanedHtmlBody: normalized.cleanedHtmlBody,
+      cleanedTextBody: normalized.cleanedTextBody,
+      provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown', // Extract domain from email
+      bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
+    });
+
+    // Log mapped data to mapper's logs folder
+    const mappedFileName = `mapped_${rawEmail.id}.json`;
+    logMappedEmail(mappedFileName, mappedData);
+    console.log(`[EmailNormalizer] Mapping completed and logged | messageId=${rawEmail.id}`);
+  } catch (mapperError: any) {
+    console.warn(`[EmailNormalizer] Mapper service error: ${mapperError.message} - continuing without mapping`);
+  }
 
   return {
     bookingType: bookingMeta.bookingType,
