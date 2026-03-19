@@ -10,6 +10,32 @@ interface ExtractPdfResponse {
   error?: string;
 }
 
+const parsePdfBuffer = async (pdfBuffer: Buffer, debugFilePrefix: string): Promise<ExtractPdfResponse> => {
+  // Save PDF for debugging
+  const debugDir = path.join(__dirname, '../logs');
+  if (!fs.existsSync(debugDir)) {
+    fs.mkdirSync(debugDir, { recursive: true });
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const debugPdfPath = path.join(debugDir, `${debugFilePrefix}_${timestamp}.pdf`);
+
+  fs.writeFileSync(debugPdfPath, pdfBuffer);
+  console.log(`Debug PDF saved: ${debugPdfPath}`);
+
+  console.log(`Parsing PDF to extract text...`);
+  const parsed = await pdf(pdfBuffer);
+  const pdfText = parsed.text;
+
+  console.log(`PDF parsed successfully (${pdfText.length} characters extracted)`);
+
+  return {
+    success: true,
+    text: pdfText,
+    debugPath: debugPdfPath,
+  };
+};
+
 /**
  * Extract PDF from Gmail attachment and convert to text
  * @param messageId - Gmail message ID
@@ -57,30 +83,8 @@ export const extractPdfFromGmail = async (
     const pdfBuffer = Buffer.from(base64Data, 'base64');
     console.log(`Buffer created (${pdfBuffer.length} bytes)`);
 
-    // Save PDF for debugging
-    const debugDir = path.join(__dirname, '../logs');
-    if (!fs.existsSync(debugDir)) {
-      fs.mkdirSync(debugDir, { recursive: true });
-    }
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const debugPdfPath = path.join(debugDir, `pdf_${messageId}_${timestamp}.pdf`);
-    
-    fs.writeFileSync(debugPdfPath, pdfBuffer);
-    console.log(`Debug PDF saved: ${debugPdfPath}`);
-
     // STEP 4: Convert PDF → Text
-    console.log(`Parsing PDF to extract text...`);
-    const parsed = await pdf(pdfBuffer);
-    const pdfText = parsed.text;
-    
-    console.log(`PDF parsed successfully (${pdfText.length} characters extracted)`);
-
-    return {
-      success: true,
-      text: pdfText,
-      debugPath: debugPdfPath
-    };
+    return await parsePdfBuffer(pdfBuffer, `pdf_gmail_${messageId}`);
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -89,6 +93,62 @@ export const extractPdfFromGmail = async (
     return {
       success: false,
       error: `PDF extraction failed: ${errorMessage}`
+    };
+  }
+};
+
+/**
+ * Extract PDF from Outlook attachment and convert to text
+ * @param messageId - Outlook message ID
+ * @param attachmentId - Outlook attachment ID
+ * @param accessToken - Microsoft Graph API access token
+ * @returns Extracted text and debug path
+ */
+export const extractPdfFromOutlook = async (
+  messageId: string,
+  attachmentId: string,
+  accessToken: string
+): Promise<ExtractPdfResponse> => {
+  try {
+    if (!messageId || !attachmentId || !accessToken) {
+      return {
+        success: false,
+        error: 'Missing required parameters: messageId, attachmentId, or accessToken',
+      };
+    }
+
+    console.log(`Fetching Outlook PDF attachment... (messageId: ${messageId}, attachmentId: ${attachmentId})`);
+
+    const outlookApiUrl = `https://graph.microsoft.com/v1.0/me/messages/${messageId}/attachments/${attachmentId}`;
+
+    const response = await axios.get(outlookApiUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const contentBytes = response.data?.contentBytes;
+    if (!contentBytes) {
+      return {
+        success: false,
+        error: 'No attachment data received from Outlook API',
+      };
+    }
+
+    console.log(`Outlook PDF fetched (size: ${contentBytes.length} bytes)`);
+
+    // Graph contentBytes is base64 encoded
+    const pdfBuffer = Buffer.from(contentBytes, 'base64');
+    console.log(`Outlook PDF buffer created (${pdfBuffer.length} bytes)`);
+
+    return await parsePdfBuffer(pdfBuffer, `pdf_outlook_${messageId}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Outlook PDF extraction failed: ${errorMessage}`);
+
+    return {
+      success: false,
+      error: `PDF extraction failed: ${errorMessage}`,
     };
   }
 };

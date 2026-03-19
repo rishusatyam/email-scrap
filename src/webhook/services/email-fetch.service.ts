@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as mailboxDao from '../../auth/dao/mailbox.dao';
-import { processGmailEmail } from '../../email-normalizer/services/email-normalizer.service';
-import { GmailMessage } from '../../email-normalizer/types/email.types';
+import { processGmailEmail, processOutlookEmail } from '../../email-normalizer/services/email-normalizer.service';
+import { GmailMessage, OutlookMessage } from '../../email-normalizer/types/email.types';
 import { writeToFile } from '../utils/webhook-logger';
 
 interface FetchEmailData {
@@ -9,6 +9,9 @@ interface FetchEmailData {
   emailAddress: string;
   messageId: string;
 }
+
+const sanitizeForFileName = (value: string): string =>
+  value.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '_');
 
 // Called by the email-fetch worker
 // Fetches a single raw email from Gmail or Outlook and logs the response
@@ -47,14 +50,22 @@ export const fetchEmail = async ({ provider, emailAddress, messageId }: FetchEma
 
     // 5. Save raw email to file
     console.log(`[EmailFetch] Successfully fetched email | messageId=${messageId} | provider=${provider}`);
-    const fileName = `${provider}_${emailAddress.replace('@', '_')}_${messageId}.json`;
+    const safeEmail = sanitizeForFileName(emailAddress.replace('@', '_'));
+    const safeMessageId = sanitizeForFileName(messageId);
+    const fileName = `${provider}_${safeEmail}_${safeMessageId}.json`;
     writeToFile(fileName, rawEmail);
 
     if (provider === 'gmail') {
       const normalizedEmail = await processGmailEmail(rawEmail as GmailMessage, {
         accessToken,
       });
-      const normalizedFileName = `normalized_${provider}_${emailAddress.replace('@', '_')}_${messageId}.json`;
+      const normalizedFileName = `normalized_${provider}_${safeEmail}_${safeMessageId}.json`;
+      writeToFile(normalizedFileName, normalizedEmail);
+    } else if (provider === 'outlook') {
+      const normalizedEmail = await processOutlookEmail(rawEmail as OutlookMessage, {
+        accessToken,
+      });
+      const normalizedFileName = `normalized_${provider}_${safeEmail}_${safeMessageId}.json`;
       writeToFile(normalizedFileName, normalizedEmail);
     }
   } catch (error: any) {

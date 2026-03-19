@@ -59,3 +59,26 @@ export interface GmailMessage {
   historyId?: string;
   internalDate?: string;
 }
+
+export interface OutlookRecipient {
+  emailAddress?: {
+    name?: string;
+    address?: string;
+  };
+}
+
+export interface OutlookMessage {
+  id: string;
+  conversationId?: string;
+  subject?: string;
+  bodyPreview?: string;
+  sentDateTime?: string;
+  from?: OutlookRecipient;
+  toRecipients?: OutlookRecipient[];
+  hasAttachments?: boolean;
+  body?: {
+    contentType?: string;
+    content?: string;
+  };
+  [key: string]: any;
+}
