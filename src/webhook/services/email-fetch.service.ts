@@ -2,6 +2,8 @@ import axios from 'axios';
 import * as mailboxDao from '../../auth/dao/mailbox.dao';
 import { processGmailEmail, processOutlookEmail } from '../../email-normalizer/services/email-normalizer.service';
 import { GmailMessage, OutlookMessage } from '../../email-normalizer/types/email.types';
+import { quickFilterGmail } from '../../classification/gmail-quick-filter.service';
+import { quickFilterOutlook } from '../../classification/outlook-quick-filter.service';
 import { writeToFile } from '../utils/webhook-logger';
 
 interface FetchEmailData {
@@ -54,6 +56,34 @@ export const fetchEmail = async ({ provider, emailAddress, messageId }: FetchEma
     const safeMessageId = sanitizeForFileName(messageId);
     const fileName = `${provider}_${safeEmail}_${safeMessageId}.json`;
     writeToFile(fileName, rawEmail);
+
+    if (provider === 'outlook') {
+      const filterResult = quickFilterOutlook(rawEmail as OutlookMessage);
+
+      if (!filterResult.isBooking) {
+        console.log(
+          `[EmailFetch] Quick filter skipped email | provider=${provider} | messageId=${messageId} | score=${filterResult.score} | reasons=${filterResult.reasons.join('; ')}`
+        );
+        return;
+      }
+
+      console.log(
+        `[EmailFetch] Quick filter passed | provider=${provider} | messageId=${messageId} | score=${filterResult.score} | reasons=${filterResult.reasons.join('; ')}`
+      );
+    } else if (provider === 'gmail') {
+      const filterResult = quickFilterGmail(rawEmail as GmailMessage);
+
+      if (!filterResult.isBooking) {
+        console.log(
+          `[EmailFetch] Quick filter skipped email | provider=${provider} | messageId=${messageId} | score=${filterResult.score} | reasons=${filterResult.reasons.join('; ')}`
+        );
+        return;
+      }
+
+      console.log(
+        `[EmailFetch] Quick filter passed | provider=${provider} | messageId=${messageId} | score=${filterResult.score} | reasons=${filterResult.reasons.join('; ')}`
+      );
+    }
 
     if (provider === 'gmail') {
       const normalizedEmail = await processGmailEmail(rawEmail as GmailMessage, {

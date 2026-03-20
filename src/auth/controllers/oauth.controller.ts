@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { getGmailAuthUrl, getGmailTokens, getGmailUserInfo } from '../services/gmail.service';
 import { getOutlookAuthUrl, getOutlookTokens, getOutlookUserInfo } from '../services/outlook.service';
 import { saveMailbox } from '../services/mailbox.service';
+import { findMailboxById } from '../dao/mailbox.dao';
+import { createGmailWatch } from '../../subscriptions/services/gmail-watch.service';
+import { createOutlookSubscription } from '../../subscriptions/services/outlook-subscription.service';
 
 // Start OAuth flow - redirect to provider
 export const startOAuth = async (req: Request, res: Response) => {
@@ -48,19 +51,53 @@ export const handleCallback = async (req: Request, res: Response) => {
     }
     
     // Save mailbox with encrypted tokens
-    await saveMailbox({
+    const mailbox = await saveMailbox({
       provider: provider as 'gmail' | 'outlook',
       emailAddress,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       expiresIn: tokens.expires_in
     });
+
+    console.log(`[OAuthController] Mailbox saved | id=${mailbox.id} | provider=${provider} | email=${emailAddress}`);
+
+    // Auto-create subscription immediately
+    console.log(`[OAuthController] Creating subscription for mailbox=${mailbox.id}`);
+    let subscriptionData: any;
+
+    try {
+      if (provider === 'gmail') {
+        const result = await createGmailWatch(mailbox);
+        subscriptionData = {
+          provider: result.provider,
+          historyId: result.historyId,
+          expiryTime: result.expiryTime,
+        };
+      } else if (provider === 'outlook') {
+        const result = await createOutlookSubscription(mailbox);
+        subscriptionData = {
+          provider: result.provider,
+          subscriptionId: result.subscriptionId,
+          expiryTime: result.expiryTime,
+        };
+      }
+
+      console.log(`[OAuthController] Subscription created successfully | mailboxId=${mailbox.id}`);
+    } catch (subscriptionError: any) {
+      console.warn(`[OAuthController] Subscription creation failed: ${subscriptionError.message} - but mailbox connection succeeded`);
+      // Don't fail OAuth if subscription fails - mailbox is still connected
+      subscriptionData = {
+        error: `Subscription creation failed: ${subscriptionError.message}`,
+      };
+    }
     
-    // Return success response
+    // Return success response with mailbox and subscription data
     return res.json({
       status: 'connected',
       provider,
-      email: emailAddress
+      email: emailAddress,
+      mailboxId: mailbox.id,
+      subscription: subscriptionData,
     });
   } catch (error) {
     console.error('OAuth callback error:', error);

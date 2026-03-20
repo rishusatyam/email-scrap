@@ -39,6 +39,40 @@ export const createSubscription = async (data: {
   return await prisma.subscription.create({ data });
 };
 
+// Find active subscriptions that will expire before the given timestamp
+export const findExpiringActiveSubscriptions = async (params: {
+  provider: string;
+  expiresBefore: Date;
+}) => {
+  return await prisma.subscription.findMany({
+    where: {
+      provider: params.provider,
+      status: 'active',
+      expiryTime: {
+        not: null,
+        lt: params.expiresBefore,
+      },
+    },
+    include: { mailbox: true },
+    orderBy: { expiryTime: 'asc' },
+  });
+};
+
+// Update a subscription record after a successful renewal
+export const updateSubscriptionRenewalById = async (
+  id: string,
+  data: { subscriptionId?: string; expiryTime: Date }
+) => {
+  return await prisma.subscription.update({
+    where: { id },
+    data: {
+      subscriptionId: data.subscriptionId,
+      expiryTime: data.expiryTime,
+      status: 'active',
+    },
+  });
+};
+
 // Update subscription status by provider-side subscriptionId
 export const updateSubscriptionStatus = async (subscriptionId: string, status: string) => {
   return await prisma.subscription.update({

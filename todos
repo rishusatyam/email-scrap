@@ -10,26 +10,10 @@ task - to be done (today)
 
 
 
-**Today’s Tasks (Priority Order)**
+***************************************************************************
+need enhancement in future
 
-1. Link the PDF extractor with the Gmail normalizer.
+renewal of outlook is done and renewal of gmail is left need to be done in future 
 
-2. Organize the response that needs to be sent to the mapper service
 
-   * Clean the response into a proper structured format.
-   * Based on that, fix the input validation of the mapping service.
-
-3. Link the webhook service with the email-normalizing service.
-
-4. Link the Gmail cleaning service with the mapping service (**most important**).
-
-5. If needed, link auth and subscription flow
-
-   * Ensure subscription is handled at login time.
-
-6. After completing integrations, test everything end-to-end once.
-
-7. After all tasks are done, discuss with Ayush:
-
-   * Whether to use **PDF** or **HTML body** (since both contain the same data).
-   * Decide to send only one source going forward.
+--> classifier filter is done for outlook its amazing also done for gmail but need ehnacemnet we have ti add validation after it decode the data so we also implmnet that there a validation simple alyer on its htmlbody (less priority for now)
