@@ -1,4 +1,3 @@
-
 task - to be done (today)
 1. linked the pdf extractor with gmail normalizer -------------> done (testing left)
 2. organize the respocne that what needed to be sended to the mapper servide(means clean the respocne into clean struture ) and based on it fix the input validation of tha mapping service 
@@ -17,3 +16,7 @@ renewal of outlook is done and renewal of gmail is left need to be done in futur
 
 
 --> classifier filter is done for outlook its amazing also done for gmail but need ehnacemnet we have ti add validation after it decode the data so we also implmnet that there a validation simple alyer on its htmlbody (less priority for now)
+
+
+--> need a research on expiration date on while creating subscription
+----> oulook back fill is fine next an gmail case backfill is done ssmall layer of validator should be there in gmail because there need some research in it ----(high priority) 

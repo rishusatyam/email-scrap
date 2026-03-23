@@ -198,7 +198,13 @@ export const handleOutlookWebhook = async (req: Request, res: Response) => {
 
       const emailAddress = subscription.mailbox.emailAddress;
       console.log(`[Webhook:Outlook] [${i + 1}] Resolved mailbox: ${emailAddress} | mailboxId=${subscription.mailboxId}`);
-      const jobId = await enqueueEmailFetch({ provider: 'outlook', emailAddress, messageId });
+      const jobId = await enqueueEmailFetch({
+        provider: 'outlook',
+        emailAddress,
+        mailboxId: subscription.mailbox.id,
+        messageId,
+        source: 'webhook'
+      });
       console.log(`[Webhook:Outlook] [${i + 1}] Enqueued fetch | jobId=${jobId} | messageId=${messageId} | email=${emailAddress}`);
     }
 

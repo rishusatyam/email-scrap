@@ -5,6 +5,7 @@ import { saveMailbox } from '../services/mailbox.service';
 import { findMailboxById } from '../dao/mailbox.dao';
 import { createGmailWatch } from '../../subscriptions/services/gmail-watch.service';
 import { createOutlookSubscription } from '../../subscriptions/services/outlook-subscription.service';
+import { enqueueBackfill } from '../../backfill';
 
 // Start OAuth flow - redirect to provider
 export const startOAuth = async (req: Request, res: Response) => {
@@ -73,6 +74,21 @@ export const handleCallback = async (req: Request, res: Response) => {
           historyId: result.historyId,
           expiryTime: result.expiryTime,
         };
+
+        const backfillJobId = await enqueueBackfill({
+          mailboxId: mailbox.id,
+          provider: 'gmail',
+        });
+
+        subscriptionData.backfill = {
+          status: 'enqueued',
+          jobId: backfillJobId,
+          mailboxId: mailbox.id,
+        };
+
+        console.log(
+          `[OAuthController] Gmail backfill enqueued | mailboxId=${mailbox.id} | jobId=${backfillJobId}`
+        );
       } else if (provider === 'outlook') {
         const result = await createOutlookSubscription(mailbox);
         subscriptionData = {
@@ -80,6 +96,21 @@ export const handleCallback = async (req: Request, res: Response) => {
           subscriptionId: result.subscriptionId,
           expiryTime: result.expiryTime,
         };
+
+        const backfillJobId = await enqueueBackfill({
+          mailboxId: mailbox.id,
+          provider: 'outlook',
+        });
+
+        subscriptionData.backfill = {
+          status: 'enqueued',
+          jobId: backfillJobId,
+          mailboxId: mailbox.id,
+        };
+
+        console.log(
+          `[OAuthController] Backfill enqueued | mailboxId=${mailbox.id} | jobId=${backfillJobId}`
+        );
       }
 
       console.log(`[OAuthController] Subscription created successfully | mailboxId=${mailbox.id}`);

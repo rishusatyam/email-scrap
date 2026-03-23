@@ -113,7 +113,13 @@ export const processHistoryEvent = async ({ emailAddress, historyId }: HistoryEv
 
   // 6. Enqueue each messageId for fetching with deduplication
   for (const messageId of messageIds) {
-    const jobId = await enqueueEmailFetch({ provider: 'gmail', emailAddress, messageId });
+    const jobId = await enqueueEmailFetch({
+      provider: 'gmail',
+      emailAddress,
+      mailboxId: mailbox.id,
+      messageId,
+      source: 'gmail-history'
+    });
     console.log(`[GmailHistory] Enqueued fetch | jobId=${jobId} | messageId=${messageId}`);
   }
 

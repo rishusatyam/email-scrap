@@ -8,6 +8,8 @@ import { detectBookingMeta } from '../../mapper/utils/booking-meta-detection.uti
 import { extractPdfFromGmail, extractPdfFromOutlook } from '../../pdf-extractor/services/pdf.service';
 import { MapperService } from '../../mapper/services/mapper.service';
 import { logMappedEmail } from '../../mapper/utils/mapper-logger';
+import { validateStrictBooking } from '../../classification/strictvalidator';
+import { logNormalizedEmail } from '../utils/normalizer-logger';
 
 export interface ProcessedNormalizedEmail extends NormalizedEmail {
   bookingType: string;
@@ -189,24 +191,49 @@ export const processOutlookEmail = async (
 
   console.log(`[EmailNormalizer] Outlook booking meta detected | type=${bookingMeta.bookingType} | provider=${bookingMeta.provider}`);
 
-  // Link with mapper service - run mapping but don't return it
-  try {
-    console.log(`[EmailNormalizer] Calling mapper service for Outlook messageId=${rawEmail.id}`);
-    const mapperService = new MapperService();
-    const mappedData = await mapperService.mapEmail({
-      subject: normalized.subject,
-      cleanedHtmlBody: normalized.cleanedHtmlBody,
-      cleanedTextBody: normalized.cleanedTextBody,
-      provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown',
-      bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
-    });
+  const strictValidation = validateStrictBooking({
+    subject: normalized.subject,
+    body: normalized.textBody,
+    cleanedHtmlBody: normalized.cleanedHtmlBody,
+    cleanedTextBody: normalized.cleanedTextBody,
+    pdfText: pdfData?.text,
+    attachments: normalized.attachments,
+  });
 
-    // Log mapped data to mapper's logs folder
-    const mappedFileName = `mapped_${rawEmail.id}.json`;
-    logMappedEmail(mappedFileName, mappedData);
-    console.log(`[EmailNormalizer] Outlook mapping completed and logged | messageId=${rawEmail.id}`);
-  } catch (mapperError: any) {
-    console.warn(`[EmailNormalizer] Outlook mapper service error: ${mapperError.message} - continuing without mapping`);
+  logNormalizedEmail(`normalized_pre_mapper_outlook_${rawEmail.id}.json`, {
+    messageId: rawEmail.id,
+    provider: bookingMeta.provider,
+    bookingType: bookingMeta.bookingType,
+    strictValidation,
+    normalized,
+    pdfData,
+  });
+
+  if (strictValidation.decision === 'ALLOW') {
+    console.log(
+      `[EmailNormalizer] Strict validator passed for Outlook messageId=${rawEmail.id} | reason=${strictValidation.reason}`
+    );
+    try {
+      console.log(`[EmailNormalizer] Calling mapper service for Outlook messageId=${rawEmail.id}`);
+      const mapperService = new MapperService();
+      const mappedData = await mapperService.mapEmail({
+        subject: normalized.subject,
+        cleanedHtmlBody: normalized.cleanedHtmlBody,
+        cleanedTextBody: normalized.cleanedTextBody,
+        provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown',
+        bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
+      });
+
+      const mappedFileName = `mapped_${rawEmail.id}.json`;
+      logMappedEmail(mappedFileName, mappedData);
+      console.log(`[EmailNormalizer] Outlook mapping completed and logged | messageId=${rawEmail.id}`);
+    } catch (mapperError: any) {
+      console.warn(`[EmailNormalizer] Outlook mapper service error: ${mapperError.message} - continuing without mapping`);
+    }
+  } else {
+    console.log(
+      `[EmailNormalizer] Strict validator blocked mapper for Outlook messageId=${rawEmail.id} | reason=${strictValidation.reason}`
+    );
   }
 
   return {
@@ -270,24 +297,49 @@ export const processGmailEmail = async (
 
   console.log(`[EmailNormalizer] Normalization completed for messageId=${rawEmail.id}`);
 
-  // Link with mapper service - run mapping but don't return it
-  try {
-    console.log(`[EmailNormalizer] Calling mapper service for messageId=${rawEmail.id}`);
-    const mapperService = new MapperService();
-    const mappedData = await mapperService.mapEmail({
-      subject: normalized.subject,
-      cleanedHtmlBody: normalized.cleanedHtmlBody,
-      cleanedTextBody: normalized.cleanedTextBody,
-      provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown', // Extract domain from email
-      bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
-    });
+  const strictValidation = validateStrictBooking({
+    subject: normalized.subject,
+    body: normalized.textBody,
+    cleanedHtmlBody: normalized.cleanedHtmlBody,
+    cleanedTextBody: normalized.cleanedTextBody,
+    pdfText: pdfData?.text,
+    attachments: normalized.attachments,
+  });
 
-    // Log mapped data to mapper's logs folder
-    const mappedFileName = `mapped_${rawEmail.id}.json`;
-    logMappedEmail(mappedFileName, mappedData);
-    console.log(`[EmailNormalizer] Mapping completed and logged | messageId=${rawEmail.id}`);
-  } catch (mapperError: any) {
-    console.warn(`[EmailNormalizer] Mapper service error: ${mapperError.message} - continuing without mapping`);
+  logNormalizedEmail(`normalized_pre_mapper_gmail_${rawEmail.id}.json`, {
+    messageId: rawEmail.id,
+    provider: bookingMeta.provider,
+    bookingType: bookingMeta.bookingType,
+    strictValidation,
+    normalized,
+    pdfData,
+  });
+
+  if (strictValidation.decision === 'ALLOW') {
+    console.log(
+      `[EmailNormalizer] Strict validator passed for messageId=${rawEmail.id} | reason=${strictValidation.reason}`
+    );
+    try {
+      console.log(`[EmailNormalizer] Calling mapper service for messageId=${rawEmail.id}`);
+      const mapperService = new MapperService();
+      const mappedData = await mapperService.mapEmail({
+        subject: normalized.subject,
+        cleanedHtmlBody: normalized.cleanedHtmlBody,
+        cleanedTextBody: normalized.cleanedTextBody,
+        provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown',
+        bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
+      });
+
+      const mappedFileName = `mapped_${rawEmail.id}.json`;
+      logMappedEmail(mappedFileName, mappedData);
+      console.log(`[EmailNormalizer] Mapping completed and logged | messageId=${rawEmail.id}`);
+    } catch (mapperError: any) {
+      console.warn(`[EmailNormalizer] Mapper service error: ${mapperError.message} - continuing without mapping`);
+    }
+  } else {
+    console.log(
+      `[EmailNormalizer] Strict validator blocked mapper for messageId=${rawEmail.id} | reason=${strictValidation.reason}`
+    );
   }
 
   return {

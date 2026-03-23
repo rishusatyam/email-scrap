@@ -32,7 +32,7 @@ const TRUSTED_SENDER_PATTERNS = [
   'oyo',
 ];
 
-const DEFAULT_THRESHOLD = 5;
+const DEFAULT_THRESHOLD = 2;
 
 const getGmailThreshold = () => {
   const raw = process.env.GMAIL_QUICK_FILTER_THRESHOLD;

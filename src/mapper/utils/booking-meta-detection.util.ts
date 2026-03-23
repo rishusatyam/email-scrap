@@ -34,7 +34,7 @@ export function detectBookingMeta(
 }
 
 function detectBookingType(text: string): string {
-  // Strict priority order: flight → train → bus → hotel → cab
+  // Strict priority order: flight → train → bus → hotel → car
 
   if (text.includes('flight')) {
     return 'flight';
@@ -58,7 +58,7 @@ function detectBookingType(text: string): string {
     text.includes('driver') ||
     text.includes('pickup')
   ) {
-    return 'cab';
+    return 'car';
   }
 
   return 'unknown';

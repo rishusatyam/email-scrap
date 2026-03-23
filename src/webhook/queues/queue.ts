@@ -10,8 +10,10 @@ export interface GmailHistoryJobData {
 
 export interface EmailFetchJobData {
   provider: 'gmail' | 'outlook';
-  emailAddress: string;
+  emailAddress?: string;
+  mailboxId?: string;
   messageId: string;
+  source?: 'webhook' | 'gmail-history' | 'backfill';
 }
 
 // Queue: processes Gmail historyId → resolves to messageIds
@@ -47,8 +49,10 @@ export const enqueueGmailHistory = async (data: GmailHistoryJobData) => {
 
 // Helper: enqueue an email fetch job with deduplication
 export const enqueueEmailFetch = async (data: EmailFetchJobData) => {
-  const email = data.emailAddress.replace('@', '_');
-  const jobId = `email-fetch#${data.provider}#${email}#${data.messageId}`;
+  const identityPart = data.mailboxId
+    ? `mailbox_${data.mailboxId}`
+    : (data.emailAddress || 'unknown').replace('@', '_');
+  const jobId = `email-fetch#${data.provider}#${identityPart}#${data.messageId}`;
   await emailFetchQueue.add('fetch-email', data, { jobId });
   return jobId;
 };
