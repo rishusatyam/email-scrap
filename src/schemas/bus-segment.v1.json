@@ -112,21 +112,24 @@
       },
       "required": ["terminal", "city", "scheduledTime"]
     },
-    "passenger": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "ticketNumber": {
-          "type": "string"
-        },
-        "seatNumber": {
-          "type": "string"
-        },
-        "passengerType": {
-          "type": "string",
-          "enum": ["adult", "child", "senior", "student"]
+    "passengers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "ticketNumber": {
+            "type": "string"
+          },
+          "seatNumber": {
+            "type": "string"
+          },
+          "passengerType": {
+            "type": "string",
+            "enum": ["adult", "child", "senior", "student"]
+          }
         }
       }
     },

@@ -82,6 +82,12 @@ interface OutlookAttachmentItem {
   isInline?: boolean;
 }
 
+interface PdfExtractionResult {
+  success: boolean;
+  text?: string;
+  error?: string;
+}
+
 const fetchOutlookAttachments = async (messageId: string, accessToken: string) => {
   const response = await axios.get(
     `https://graph.microsoft.com/v1.0/me/messages/${messageId}/attachments?$select=id,name,contentType,size,isInline`,
@@ -102,6 +108,61 @@ const fetchOutlookAttachments = async (messageId: string, accessToken: string) =
       attachmentId: item.id,
       size: item.size,
     }));
+};
+
+const getPdfAttachments = (attachments: NormalizedEmail['attachments']) =>
+  attachments.filter(
+    (attachment) =>
+      attachment.attachmentId &&
+      (attachment.mimeType === 'application/pdf' || attachment.filename.toLowerCase().endsWith('.pdf'))
+  );
+
+const extractCombinedPdfData = async (
+  messageId: string,
+  accessToken: string,
+  pdfAttachments: NormalizedEmail['attachments'],
+  extractOne: (messageId: string, attachmentId: string, accessToken: string) => Promise<{
+    success: boolean;
+    text?: string;
+    error?: string;
+    debugPath?: string;
+  }>,
+  providerLabel: 'Gmail' | 'Outlook'
+): Promise<PdfExtractionResult> => {
+  const extractedTextBlocks: string[] = [];
+  const errors: string[] = [];
+
+  for (const [index, attachment] of pdfAttachments.entries()) {
+    console.log(
+      `[EmailNormalizer] Attempting ${providerLabel} PDF extraction (${index + 1}/${pdfAttachments.length}) | filename=${attachment.filename}`
+    );
+
+    const pdfResult = await extractOne(messageId, attachment.attachmentId, accessToken);
+    if (pdfResult.success && pdfResult.text) {
+      extractedTextBlocks.push(`--- PDF ${index + 1}: ${attachment.filename} ---\n${pdfResult.text}`);
+      console.log(
+        `[EmailNormalizer] ${providerLabel} PDF extraction success (${index + 1}/${pdfAttachments.length}) | filename=${attachment.filename}`
+      );
+    } else {
+      errors.push(`${attachment.filename}: ${pdfResult.error || 'Unknown extraction error'}`);
+      console.warn(
+        `[EmailNormalizer] ${providerLabel} PDF extraction failed (${index + 1}/${pdfAttachments.length}) | filename=${attachment.filename} | error=${pdfResult.error || 'Unknown extraction error'}`
+      );
+    }
+  }
+
+  if (extractedTextBlocks.length > 0) {
+    return {
+      success: true,
+      text: extractedTextBlocks.join('\n\n'),
+      error: errors.length > 0 ? `Partial extraction failure: ${errors.join(' | ')}` : undefined,
+    };
+  }
+
+  return {
+    success: false,
+    error: errors.length > 0 ? errors.join(' | ') : 'No PDF text could be extracted',
+  };
 };
 
 export const normalizeOutlookEmail = (rawEmail: OutlookMessage): NormalizedEmail => {
@@ -157,24 +218,20 @@ export const processOutlookEmail = async (
   }
 
   let pdfData: ProcessedNormalizedEmail['pdfData'];
-  const pdfAttachment = normalized.attachments.find(
-    (attachment) =>
-      attachment.attachmentId &&
-      (attachment.mimeType === 'application/pdf' || attachment.filename.toLowerCase().endsWith('.pdf'))
-  );
+  const pdfAttachments = getPdfAttachments(normalized.attachments);
 
-  if (pdfAttachment && options?.accessToken) {
-    console.log(`[EmailNormalizer] Attempting Outlook PDF extraction | filename=${pdfAttachment.filename}`);
-    const pdfResult = await extractPdfFromOutlook(
+  if (pdfAttachments.length > 0 && options?.accessToken) {
+    pdfData = await extractCombinedPdfData(
       normalized.messageId,
-      pdfAttachment.attachmentId,
-      options.accessToken
+      options.accessToken,
+      pdfAttachments,
+      extractPdfFromOutlook,
+      'Outlook'
     );
-
-    const { debugPath, ...pdfResponse } = pdfResult;
-    pdfData = pdfResponse;
-    console.log(`[EmailNormalizer] Outlook PDF extraction completed | success=${pdfData.success}`);
-  } else if ((pdfAttachment || rawEmail.hasAttachments) && !options?.accessToken) {
+    console.log(
+      `[EmailNormalizer] Outlook PDF extraction completed | success=${pdfData.success} | pdfCount=${pdfAttachments.length}`
+    );
+  } else if ((pdfAttachments.length > 0 || rawEmail.hasAttachments) && !options?.accessToken) {
     console.warn(`[EmailNormalizer] Outlook attachment found but no accessToken provided - skipping extraction`);
     pdfData = {
       success: false,
@@ -268,26 +325,22 @@ export const processGmailEmail = async (
 
   console.log(`[EmailNormalizer] Booking meta detected | type=${bookingMeta.bookingType} | provider=${bookingMeta.provider}`);
 
-  const pdfAttachment = normalized.attachments.find(
-    (attachment) =>
-      attachment.attachmentId &&
-      (attachment.mimeType === 'application/pdf' || attachment.filename.toLowerCase().endsWith('.pdf'))
-  );
+  const pdfAttachments = getPdfAttachments(normalized.attachments);
 
   let pdfData: ProcessedNormalizedEmail['pdfData'];
 
-  if (pdfAttachment && options?.accessToken) {
-    console.log(`[EmailNormalizer] Attempting PDF extraction | filename=${pdfAttachment.filename}`);
-    const pdfResult = await extractPdfFromGmail(
+  if (pdfAttachments.length > 0 && options?.accessToken) {
+    pdfData = await extractCombinedPdfData(
       normalized.messageId,
-      pdfAttachment.attachmentId,
-      options.accessToken
+      options.accessToken,
+      pdfAttachments,
+      extractPdfFromGmail,
+      'Gmail'
     );
-
-    const { debugPath, ...pdfResponse } = pdfResult;
-    pdfData = pdfResponse;
-    console.log(`[EmailNormalizer] PDF extraction completed | success=${pdfData.success}`);
-  } else if (pdfAttachment && !options?.accessToken) {
+    console.log(
+      `[EmailNormalizer] PDF extraction completed | success=${pdfData.success} | pdfCount=${pdfAttachments.length}`
+    );
+  } else if (pdfAttachments.length > 0 && !options?.accessToken) {
     console.warn(`[EmailNormalizer] PDF attachment found but no accessToken provided - skipping extraction`);
     pdfData = {
       success: false,

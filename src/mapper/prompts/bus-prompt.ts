@@ -57,11 +57,11 @@ BUS-SPECIFIC FIELD MAPPING
 - Drop gate/platform → {arrival.gate}
 - Drop/arrival time → {arrival.scheduledTime}
 
-**Passenger:**
-- Passenger name → {passenger.name}
-- Seat number → {passenger.seatNumber}
-- Ticket/PNR number → {passenger.ticketNumber}
-- Passenger type (Adult/Child) → {passenger.passengerType}
+**Passenger (repeatable rows):**
+- Passenger name → {passengers[].name}
+- Seat number → {passengers[].seatNumber}
+- Ticket/PNR number → {passengers[].ticketNumber}
+- Passenger type (Adult/Child) → {passengers[].passengerType}
 
 **Booking:**
 - Booking ID/reference → {bookingId}
@@ -119,8 +119,8 @@ Annotated Template:
 *Arrival Date and Time:* {arrival.scheduledTime}
 
 *Passenger Details*
-*Name:* {passenger.name}
-*Seat Number:* {passenger.seatNumber}
+*Name:* {passengers[].name}
+*Seat Number:* {passengers[].seatNumber}
 *Total Fare:* {fare.currency}
 
 *Boarding Point Details*
@@ -153,7 +153,7 @@ Fare: Rs. 1200"
 Annotated Template:
 "RedBus Ticket Confirmation
 
-PNR: {passenger.ticketNumber}
+PNR: {passengers[].ticketNumber}
 Operator: {bus.operator}
 Bus Type: {bus.busType}
 Route: {departure.city} to {arrival.city}
@@ -161,8 +161,8 @@ Route: {departure.city} to {arrival.city}
 Boarding: {departure.terminal}, {departure.city} - {departure.scheduledTime}
 Dropping: {arrival.terminal}, {arrival.city} - {arrival.scheduledTime}
 
-Passenger: {passenger.name}
-Seat: {passenger.seatNumber}
+Passenger: {passengers[].name}
+Seat: {passengers[].seatNumber}
 Fare: {fare.currency}"
 
 ================================
@@ -175,8 +175,9 @@ IMPORTANT RULES FOR BUS BOOKINGS
 - **Seat Numbers** can be: 24, L5, U12, A1, etc. (Lower/Upper berth or seat number)
 - Replace ONLY data values, NOT labels like "Boarding Point:", "Bus Operator:", etc.
 - Keep exact spacing, line breaks, and formatting from the original email
-- Each placeholder should appear ONLY ONCE in the template
-- If a value appears multiple times, replace only the FIRST occurrence
+- Non-passenger placeholders should appear only once in the template
+- For non-passenger values, if a value appears multiple times, replace only the FIRST occurrence
+- Passenger placeholders ({passengers[].name}, {passengers[].seatNumber}, {passengers[].ticketNumber}, {passengers[].passengerType}) can repeat for each passenger row
 
 ================================
 OUTPUT FORMAT

@@ -6,6 +6,7 @@ import { SchemaLoaderUtil } from '../utils/schema-loader.util';
 import { TypeConverterUtil } from '../utils/type-converter.util';
 import { DataCleanerUtil } from '../utils/data-cleaner.util';
 import { HashContextUtil } from '../utils/hash-context.util';
+import { BusPassengerExtractor } from '../extractors';
 export class MapperService {
   private llmService: LLMService;
   private templateRuleDAO: TemplateRuleDAO;
@@ -76,10 +77,7 @@ export class MapperService {
         console.log('[Mapper] Extracted values with new template:');
         console.log(JSON.stringify(newExtractedValues, null, 2));
         
-        const mappedData = TemplateMatcherUtil.buildNestedObject(newExtractedValues);
-        const cleanedData = DataCleanerUtil.cleanAllValues(mappedData);
-        const typedData = TypeConverterUtil.applyTypeConversion(cleanedData, schema);
-        return SchemaLoaderUtil.fillMissingFields(typedData, schema);
+        return this.finalizeMappedResult(newExtractedValues, body, request.bookingType, schema);
       }
       
       // Extraction rate ≥80% - proceed to word validation
@@ -150,10 +148,7 @@ export class MapperService {
           console.log(JSON.stringify(newExtractedValues, null, 2));
           
           // Use new extracted values
-          const mappedData = TemplateMatcherUtil.buildNestedObject(newExtractedValues);
-          const cleanedData = DataCleanerUtil.cleanAllValues(mappedData);
-          const typedData = TypeConverterUtil.applyTypeConversion(cleanedData, schema);
-          return SchemaLoaderUtil.fillMissingFields(typedData, schema);
+          return this.finalizeMappedResult(newExtractedValues, body, request.bookingType, schema);
         } else {
           console.log('[Validation] ✓ Word match rate ≥90% - Template is valid');
         }
@@ -162,7 +157,47 @@ export class MapperService {
     console.log('');
 
     // Step 3: Build nested object from flat extracted values
-    const mappedData = TemplateMatcherUtil.buildNestedObject(extractedValues);
+    return this.finalizeMappedResult(extractedValues, body, request.bookingType, schema);
+  }
+
+  private finalizeMappedResult(
+    extractedValues: Record<string, string | null>,
+    body: string,
+    bookingType: string,
+    schema: Record<string, any>
+  ): Record<string, any> {
+    const nextExtractedValues = { ...extractedValues };
+    let passengers: Array<{
+      name?: string;
+      seatNumber?: string;
+      ticketNumber?: string;
+      passengerType?: string;
+    }> = [];
+
+    if (bookingType === 'bus') {
+      passengers = BusPassengerExtractor.extract(body);
+
+      // Passenger array is extracted separately to avoid flattening repeated values.
+      for (const key of Object.keys(nextExtractedValues)) {
+        if (key.startsWith('passenger.') || key.startsWith('passengers[].')) {
+          delete nextExtractedValues[key];
+        }
+      }
+    }
+
+    const mappedData = TemplateMatcherUtil.buildNestedObject(nextExtractedValues);
+
+    if (bookingType === 'bus') {
+      if (passengers.length > 0) {
+        mappedData.passengers = passengers;
+      } else if (mappedData.passenger && typeof mappedData.passenger === 'object') {
+        mappedData.passengers = [mappedData.passenger];
+      }
+
+      if (mappedData.passenger) {
+        delete mappedData.passenger;
+      }
+    }
 
     // Step 4: Clean extracted values
     const cleanedData = DataCleanerUtil.cleanAllValues(mappedData);

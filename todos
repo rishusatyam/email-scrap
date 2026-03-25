@@ -19,4 +19,7 @@ renewal of outlook is done and renewal of gmail is left need to be done in futur
 
 
 --> need a research on expiration date on while creating subscription
-----> oulook back fill is fine next an gmail case backfill is done ssmall layer of validator should be there in gmail because there need some research in it ----(high priority) 
+
+----> oulook back fill is fine next an gmail case backfill is done ssmall layer of validator should be there in gmail because there need some research in it ----(high priority)
+
+--> multi-passenger mapping is implemented for bus only (done) ---> implement multi-passenger mapping for flight/hotel/car/rail later

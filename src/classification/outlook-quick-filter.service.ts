@@ -40,7 +40,7 @@ const BODY_SIGNAL_PATTERNS = [
   /\be-?ticket\b/i,
 ];
 
-const DEFAULT_THRESHOLD = 5;
+const DEFAULT_THRESHOLD = 2;
 
 const getOutlookThreshold = () => {
   const raw = process.env.OUTLOOK_QUICK_FILTER_THRESHOLD;
