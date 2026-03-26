@@ -8,7 +8,7 @@ export class TemplateMatcherUtil {
   static extractValues(emailBody: string, template: string): Record<string, string | null> {
     const extractedValues: Record<string, string | null> = {};
 
-    // Normalize whitespace for both email and template
+    // Normalize text for matching while preserving line boundaries.
     const normalizedEmail = this.normalizeWhitespace(emailBody);
     const normalizedTemplate = this.normalizeWhitespace(template);
 
@@ -67,7 +67,9 @@ export class TemplateMatcherUtil {
         let valueEndIndex: number;
 
         if (nextSegment && nextSegment.type === 'text') {
-          const isWeakDelimiter = nextSegment.content.trim() === '';
+          const delimiter = nextSegment.content;
+          const isWeakDelimiter = delimiter.trim() === '';
+          const isLineDelimiter = delimiter.includes('\n');
 
           if (isWeakDelimiter) {
             // Weak delimiter (whitespace-only) between consecutive placeholders.
@@ -90,9 +92,12 @@ export class TemplateMatcherUtil {
 
               if (hardAnchorPos !== -1) {
                 const region = normalizedEmail.substring(emailPosition, hardAnchorPos);
-                const lastDelimPos = region.lastIndexOf(nextSegment.content);
-                valueEndIndex = lastDelimPos !== -1
-                  ? emailPosition + lastDelimPos
+                const delimiterPos = isLineDelimiter
+                  ? region.indexOf(delimiter)
+                  : region.lastIndexOf(delimiter);
+
+                valueEndIndex = delimiterPos !== -1
+                  ? emailPosition + delimiterPos
                   : hardAnchorPos;
               } else {
                 // Hard anchor not in email — fall back to first match
@@ -138,8 +143,26 @@ export class TemplateMatcherUtil {
         const rawValue = normalizedEmail.substring(emailPosition, valueEndIndex);
         const cleanedValue = this.cleanValue(rawValue);
 
-        extractedValues[fieldName] = cleanedValue;
-        emailPosition = valueEndIndex;
+        const safeValue = this.applyFieldSafety(fieldName, cleanedValue);
+        const currentValue = extractedValues[fieldName];
+
+        // Keep the first non-empty value when placeholders repeat in template.
+        if (currentValue === undefined || currentValue === null || currentValue === '') {
+          extractedValues[fieldName] = safeValue;
+        }
+
+        let nextEmailPosition = valueEndIndex;
+
+        // If field safety trimmed the extracted value, advance cursor to the end of
+        // the safe value so subsequent placeholders do not start from leftover tokens.
+        if (safeValue && cleanedValue && safeValue !== cleanedValue) {
+          const safeIdxInRaw = rawValue.indexOf(safeValue);
+          if (safeIdxInRaw !== -1) {
+            nextEmailPosition = emailPosition + safeIdxInRaw + safeValue.length;
+          }
+        }
+
+        emailPosition = Math.max(nextEmailPosition, emailPosition);
       }
     }
 
@@ -147,10 +170,17 @@ export class TemplateMatcherUtil {
   }
 
   /**
-   * Normalizes whitespace: converts multiple spaces/tabs/newlines to single space
+   * Normalizes text while preserving line breaks for boundary-aware extraction.
    */
   private static normalizeWhitespace(text: string): string {
-    return text.replace(/\s+/g, ' ').trim();
+    const normalizedNewlines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    return normalizedNewlines
+      .split('\n')
+      .map((line) => line.replace(/[ \t\f\v]+/g, ' ').trim())
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   /**
@@ -173,7 +203,7 @@ export class TemplateMatcherUtil {
     }
 
     const tokens = trimmedSegment.split(/\s+/).map((token) => this.escapeRegex(token));
-    const flexiblePattern = tokens.join('\\s*');
+    const flexiblePattern = tokens.join('\\s+');
     const flexibleRegex = new RegExp(flexiblePattern, 'g');
     flexibleRegex.lastIndex = fromIndex;
 
@@ -211,6 +241,41 @@ export class TemplateMatcherUtil {
     cleaned = cleaned.trim();
 
     return cleaned || null;
+  }
+
+  /**
+   * Applies lightweight, field-aware safety trimming to avoid cross-field spillover.
+   */
+  private static applyFieldSafety(fieldName: string, value: string | null): string | null {
+    if (!value) return null;
+
+    let result = value;
+
+    if (result.length > 180) {
+      result = result.substring(0, 180).trim();
+    }
+
+    if (fieldName.endsWith('airportCode')) {
+      const match = result.match(/\b[A-Z]{3}\b/);
+      return match ? match[0] : result;
+    }
+
+    if (fieldName.endsWith('scheduledTime')) {
+      const match = result.match(/\b\d{1,2}:\d{2}\s*(?:[AaPp][Mm]|hrs?)?\b/);
+      return match ? match[0].trim() : result;
+    }
+
+    if (fieldName.endsWith('terminal')) {
+      const match = result.match(/\b\d+[A-Za-z]?\b/);
+      return match ? match[0] : result;
+    }
+
+    if (fieldName === 'bookingReference') {
+      const match = result.match(/\b[A-Z0-9]{5,10}\b/);
+      return match ? match[0] : result;
+    }
+
+    return result;
   }
 
   /**

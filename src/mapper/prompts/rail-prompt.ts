@@ -34,6 +34,8 @@ INSTRUCTIONS
 8. **DO NOT annotate email headers (From:, To:, Date:, Subject:)**
 9. **DO NOT annotate forwarded message markers**
 10. Only annotate actual train booking data values
+11. **STRICT CHECK (MANDATORY)**: Never repeat any placeholder key. Each field placeholder can appear at most once (0 or 1 time) in the final template.
+12. If multiple candidate locations exist for the same field, keep only one BEST-MATCH occurrence and leave all other occurrences as plain text.
 
 ================================
 TRAIN-SPECIFIC FIELD MAPPING

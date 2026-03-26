@@ -1,0 +1,55 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('satyamchoudhary5501%40outlook.com')/messages/$entity",
+  "@odata.etag": "W/\"CQAAABYAAADVZYbSl5yRTJRYWuVpNL7lAAANcRk+\"",
+  "id": "AQMkADAwATNiZmYAZS1hY2IxLTFiMjQtMDACLTAwCgBGAAADSvFWpgaPIkm7JzkXcJ7MjQcA1WWG0peckUyUWFrlaTS_5QAAAgEMAAAA1WWG0peckUyUWFrlaTS_5QAAAA1zJKEAAAA=",
+  "createdDateTime": "2026-03-25T12:50:23Z",
+  "lastModifiedDateTime": "2026-03-25T12:50:24Z",
+  "changeKey": "CQAAABYAAADVZYbSl5yRTJRYWuVpNL7lAAANcRk+",
+  "categories": [],
+  "receivedDateTime": "2026-03-25T12:50:23Z",
+  "sentDateTime": "2026-03-25T12:50:19Z",
+  "hasAttachments": false,
+  "internetMessageId": "<20260325125019.7ecdafe7c52c042e@cio56699.transactional.n8n.io>",
+  "subject": "833084 : Verify your email for n8n",
+  "bodyPreview": "Hi there,\r\n\r\nPlease click on the link below to verify your email:\r\n\r\nVerify my email\r\n\r\nOr return to the signup page and enter this code:\r\n\r\n833084\r\n\r\nHappy automating,\r\nYour n8n team\r\n\r\n\r\n\r\nn8n GmbH, Novalisstraße 10, 10115 Berlin, Germany\r\n\r\n©2025 n8n G",
+  "importance": "normal",
+  "parentFolderId": "AQMkADAwATNiZmYAZS1hY2IxLTFiMjQtMDACLTAwCgAuAAADSvFWpgaPIkm7JzkXcJ7MjQEA1WWG0peckUyUWFrlaTS_5QAAAgEMAAAA",
+  "conversationId": "AQQkADAwATNiZmYAZS1hY2IxLTFiMjQtMDACLTAwCgAQAN_AJTUfkHFCpwPY2ald63c=",
+  "conversationIndex": "AQHcvFXx34AlNR+QcUKnA9jZqV3rdw==",
+  "isDeliveryReceiptRequested": null,
+  "isReadReceiptRequested": false,
+  "isRead": false,
+  "isDraft": false,
+  "webLink": "https://outlook.live.com/owa/?ItemID=AQMkADAwATNiZmYAZS1hY2IxLTFiMjQtMDACLTAwCgBGAAADSvFWpgaPIkm7JzkXcJ7MjQcA1WWG0peckUyUWFrlaTS%2B5QAAAgEMAAAA1WWG0peckUyUWFrlaTS%2B5QAAAA1zJKEAAAA%3D&exvsurl=1&viewmodel=ReadMessageItem",
+  "inferenceClassification": "focused",
+  "body": {
+    "contentType": "html",
+    "content": "<html lang=\"en\"><head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><style>\r\n<!--\r\na:hover, a:active, a:visited\r\n\t{color:#000000}\r\n@media screen and (max-width: 600px) {\r\n.email-container\r\n\t{width:100%!important;\r\n\tpadding:0 20px!important}\r\np, h1, h2, h3\r\n\t{text-align:left!important}\r\n.social-icons td\r\n\t{padding:0 5px!important}\r\n\r\n\t}\r\n-->\r\n</style></head><body style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5\"><span class=\"preheader\"></span><table class=\"body\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" bgcolor=\"#ffffff\" style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5; background-color:#ffffff\"><tbody><tr><td class=\"center\" align=\"center\" valign=\"top\" style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5\"><center><div class=\"email-container\" style=\"max-width:600px; margin:0 auto; padding:0 20px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tbody><tr><td align=\"left\" style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5\"><a href=\"https://email.transactional.n8n.io/e/c/eyJlbWFpbF9pZCI6IlJLTGFCUVVBQVowbEM2X0xtdS1fdHJCb0MyTV9XZz09IiwiaHJlZiI6Imh0dHBzOi8vbjhuLmlvLyIsImludGVybmFsIjoiYTJkYTA1OGEwM2ZiMzRkY2VjZDEwNSIsImxpbmtfaWQiOjExOTB9/88b232ccf63f68f48b3446a1557d2f9aee5eecff1d4300aff228498b935eb9c0\" style=\"font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5; color:#414244; text-decoration:underline\"><img class=\"header-logo\" src=\"https://userimg-assets.customeriomail.com/images/client-env-93474/mailHeader@2x_01JZ6ACC8A1V7D7B6MDM6KP3K8.png\" width=\"125\" style=\"width:125px; max-width:125px; padding-top:20px; padding-bottom:40px\"></a> </td></tr></tbody></table><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tbody><tr><td style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5; margin-left:8px; margin-right:8px; padding-left:8px; padding-right:8px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tbody><tr><td align=\"left\" style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5\"><p style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5; font-size:16px; margin:12px 0; font-weight:400\">Hi there,</p><p style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5; font-size:16px; margin:12px 0; font-weight:400\">Please click on the link below to verify your email:</p><table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"text-align:center\"><tbody><tr><td align=\"left\" class=\"wysiwyg-tmp-selected-cell\" style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5; padding-bottom:10px; padding-top:10px\"><a target=\"_blank\" href=\"https://email.transactional.n8n.io/e/c/eyJlbWFpbF9pZCI6IlJLTGFCUVVBQVowbEM2X0xtdS1fdHJCb0MyTV9XZz09IiwiaHJlZiI6Imh0dHBzOi8vYXBwLm44bi5jbG91ZC9yZWdpc3Rlcj9lbWFpbFRva2VuPTdmMjhkMTliYjc2OWJmZDkxMWEyNWRkNWJiYTE1MzkyJTNBOGU0OGY3MDA2YjI0NjE5NWM0MzY4YTBkOGZmODZjYmIlM0EyN2I3NTlkYzU2NTkxMTZlMWRkNmVjOGE4MDFlZTU3ZjIzYzZhMDRkNjBiZDYxNzI5ZjUyNzNjNWVjOWVkZDI3ZGM4ODQ4MjA2OTdjNWFlZDkxMmYzNzg5ZmZiZGI1MDAzZDkxYTkyODYyNDE0Y2U3MzJiN2FjYmFiMDQ3NWI5OWI5YTRjZDU4NjRiYTJkOTk1YjQyOWYyNWYwYzQ0ZjQ3NWU5NTM3ODU3ZDY0OTk2YTVjNjg0MjJkMTE5ZWU5YWZcdTAwMjZwc19wYXJ0bmVyX2tleT0wNjIwMGE4NTI2MTMiLCJpbnRlcm5hbCI6ImEyZGEwNThhMDNmYjM0ZGNlY2QxMDUiLCJsaW5rX2lkIjoyODIwfQ/ac964a15f9a197cdfefd9902207c467f5171c329f9e58dba3fa5cf44c6157a1c\" style=\"line-height:1.5; font-family:'Inter',sans-serif; font-size:16px; background-color:#ff6f5c; color:white; padding:8px 20px; text-decoration:none; display:inline-block; border-radius:5px; text-align:center\">Verify my email </a></td></tr></tbody></table><p style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5; font-size:16px; margin:12px 0; font-weight:400\">Or return to the signup page and enter this code:</p><strong style=\"font-size:22px\">833084</strong> <p style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5; font-size:16px; margin:12px 0; font-weight:400\">Happy automating,<br>Your n8n team</p></td></tr></tbody></table><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:20px 0\"><tbody><tr><td align=\"center\" style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tbody><tr><td style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; border-top:1px solid #d9d9d9; font-size:1px; line-height:1px\">&nbsp;</td></tr></tbody></table></td></tr></tbody></table><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tbody><tr><td align=\"left\" style=\"color:#414244; font-family:'Inter',Helvetica,Arial,sans-serif; line-height:1.5\"><p style=\"font-family:'Inter',Helvetica,Arial,sans-serif; margin:12px 0; font-size:14px; line-height:0.7; color:#909398; font-weight:300\">n8n GmbH, Novalisstraße 10, 10115 Berlin, Germany</p><p style=\"font-family:'Inter',Helvetica,Arial,sans-serif; margin:12px 0; font-size:14px; line-height:0.7; color:#909398; font-weight:300\">©2025 n8n GmbH, all rights reserved </p></td></tr></tbody></table></td></tr></tbody></table></div></center></td></tr></tbody></table><img src=\"https://email.transactional.n8n.io/e/o/eyJlbWFpbF9pZCI6IlJLTGFCUVVBQVowbEM2X0xtdS1fdHJCb0MyTV9XZz09In0=\" alt=\"\" style=\"height:1px!important; max-height:1px!important; max-width:1px!important; width:1px!important; display:none!important\"></body></html>"
+  },
+  "sender": {
+    "emailAddress": {
+      "name": "n8n.io",
+      "address": "noreply@transactional.n8n.io"
+    }
+  },
+  "from": {
+    "emailAddress": {
+      "name": "n8n.io",
+      "address": "noreply@transactional.n8n.io"
+    }
+  },
+  "toRecipients": [
+    {
+      "emailAddress": {
+        "name": "satyamchoudhary5501@outlook.com",
+        "address": "satyamchoudhary5501@outlook.com"
+      }
+    }
+  ],
+  "ccRecipients": [],
+  "bccRecipients": [],
+  "replyTo": [],
+  "flag": {
+    "flagStatus": "notFlagged"
+  }
+}

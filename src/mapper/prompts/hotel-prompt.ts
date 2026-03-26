@@ -28,11 +28,13 @@ INSTRUCTIONS
 3. Look for the MAIN hotel booking information section
 4. Identify ALL data values that match hotel booking fields
 5. Replace each data value with a placeholder: {fieldPath}
-6. Use dot notation for nested fields: {hotel.name}, {checkin.date}, {guest.name}
+6. Use dot notation for nested fields: {hotel.name}, {stay.checkIn}, {guest.name}
 7. Keep ALL other text exactly as it appears (labels, spacing, line breaks)
 8. **DO NOT annotate email headers (From:, To:, Date:, Subject:)**
 9. **DO NOT annotate forwarded message markers**
 10. Only annotate actual hotel booking data values
+11. **STRICT CHECK (MANDATORY)**: Never repeat any placeholder key. Each field placeholder can appear at most once (0 or 1 time) in the final template.
+12. If multiple candidate locations exist for the same field, keep only one BEST-MATCH occurrence and leave all other occurrences as plain text.
 
 ================================
 HOTEL-SPECIFIC FIELD MAPPING
@@ -41,35 +43,24 @@ HOTEL-SPECIFIC FIELD MAPPING
 **Hotel Information:**
 - Hotel name → {hotel.name}
 - Hotel chain/brand → {hotel.chain}
-- Property type (Hotel, Resort, Villa, etc.) → {hotel.propertyType}
+- Property type (Hotel, Resort, Villa, etc.) → {hotel.chain}
 - Star rating → {hotel.starRating}
 
 **Location:**
-- Hotel address → {hotel.address}
-- City → {hotel.city}
-- Area/locality → {hotel.area}
-- Landmark → {hotel.landmark}
+- City → {hotel.address.city}
 
 **Room Details:**
-- Room type (Deluxe, Suite, Standard, etc.) → {room.type}
-- Room category → {room.category}
-- Number of rooms → {room.count}
-- Room number (if assigned) → {room.number}
+- Room type (Deluxe, Suite, Standard, etc.) → {room.roomType}
+- Room number (if assigned) → {room.roomNumber}
 
 **Check-in:**
-- Check-in date → {checkin.date}
-- Check-in time → {checkin.time}
-- Check-in date and time → {checkin.scheduledTime}
+- Check-in date and time → {stay.checkIn}
 
 **Check-out:**
-- Check-out date → {checkout.date}
-- Check-out time → {checkout.time}
-- Check-out date and time → {checkout.scheduledTime}
+- Check-out date and time → {stay.checkOut}
 
 **Guest Details:**
 - Primary guest name → {guest.name}
-- Number of adults → {guest.adults}
-- Number of children → {guest.children}
 - Guest phone → {guest.phone}
 - Guest email → {guest.email}
 
@@ -78,14 +69,15 @@ HOTEL-SPECIFIC FIELD MAPPING
 - Confirmation number → {bookingReference}
 
 **Stay Details:**
-- Number of nights → {stay.nights}
-- Meal plan (Room Only, Breakfast, All Meals) → {stay.mealPlan}
+- Number of nights → {stay.numberOfNights}
+- Number of guests → {stay.numberOfGuests}
 
-**Fare:**
-- Room charges → {fare.roomCharges}
-- Total amount → {fare.amount}
-- Currency → {fare.currency}
-- Taxes → {fare.taxes}
+**Rate:**
+- Total amount → {rate.totalAmount}
+- Currency → {rate.currency}
+- Nightly rate → {rate.nightlyRate}
+- Taxes → {rate.taxes}
+- Fees → {rate.fees}
 
 **Amenities:**
 - WiFi, Pool, Gym, Parking, etc. → {amenities}
@@ -140,35 +132,30 @@ Confirmation Code: {bookingReference}
 
 Hotel Details:
 Name: {hotel.name}
-Location: {hotel.area}, {hotel.city}
+Location: {hotel.address.city}
 Star Rating: {hotel.starRating}
-Property Type: {hotel.propertyType}
+Property Type: {hotel.chain}
 
 Room Details:
-Room Type: {room.type}
-Number of Rooms: {room.count}
-Meal Plan: {stay.mealPlan}
+Room Type: {room.roomType}
+Meal Plan: Breakfast
 
 Check-in:
-Date: {checkin.date}
-Time: {checkin.time}
+Date: {stay.checkIn}
 
 Check-out:
-Date: {checkout.date}
-Time: {checkout.time}
+Date: {stay.checkOut}
 
 Guest Information:
 Name: {guest.name}
-Adults: {guest.adults}
-Children: {guest.children}
 Phone: {guest.phone}
 
-Stay Duration: {stay.nights}
+Stay Duration: {stay.numberOfNights}
 
 Fare Breakup:
-Room Charges: {fare.roomCharges}
-Taxes & Fees: {fare.taxes}
-Total Amount: {fare.currency}"
+Total Amount: {rate.totalAmount}
+Nightly Rate: {rate.nightlyRate}
+Taxes & Fees: {rate.taxes}
 
 ================================
 EXAMPLE 2: OYO Hotel Booking
@@ -204,23 +191,21 @@ Annotated Template:
 Booking Reference: {bookingId}
 
 Property: {hotel.name}
-Address: {hotel.area}, {hotel.city}
+Address: {hotel.address.city}
 Landmark: {hotel.landmark}
 
-Room: {room.type}
-Rooms: {room.count}
-Guests: {guest.adults}
+Room: {room.roomType}
 
-Check-in: {checkin.scheduledTime}
-Check-out: {checkout.scheduledTime}
-Nights: {stay.nights}
+Check-in: {stay.checkIn}
+Check-out: {stay.checkOut}
+Nights: {stay.numberOfNights}
 
 Guest Name: {guest.name}
 Contact: {guest.phone}
 
 Amenities: {amenities}
 
-Total Payable: {fare.currency}"
+Total Payable: {rate.totalAmount}"
 
 ================================
 EXAMPLE 3: Booking.com Reservation
@@ -255,22 +240,21 @@ Annotated Template:
 Confirmation Number: {bookingReference}
 
 Hotel: {hotel.name}
-Location: {hotel.area}, {hotel.city}
+Location: {hotel.address.city}
 Category: {hotel.starRating}
 
 Reservation Details:
-Room: {room.type}
-Check-in: {checkin.scheduledTime}
-Check-out: {checkout.scheduledTime}
-Length of stay: {stay.nights}
+Room: {room.roomType}
+Check-in: {stay.checkIn}
+Check-out: {stay.checkOut}
+Length of stay: {stay.numberOfNights}
 
 Guest: {guest.name}
-Number of guests: {guest.adults}
 
 Price:
-2 nights: {fare.roomCharges}
-Taxes: {fare.taxes}
-Total: {fare.currency}"
+Nightly Rate: {rate.nightlyRate}
+Taxes: {rate.taxes}
+Total: {rate.totalAmount}"
 
 ================================
 IMPORTANT RULES FOR HOTEL BOOKINGS

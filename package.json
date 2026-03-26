@@ -18,10 +18,12 @@
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "html-table-to-json": "^1.0.0",
     "html-to-text": "^9.0.5",
     "ioredis": "^5.10.0",
     "openai": "^6.27.0",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "^1.1.1",
+    "sanitize-html": "^2.17.2"
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.31",

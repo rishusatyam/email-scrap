@@ -27,51 +27,46 @@ INSTRUCTIONS
 3. Look for the MAIN car rental booking information section
 4. Identify ALL data values that match car rental booking fields
 5. Replace each data value with a placeholder: {fieldPath}
-6. Use dot notation for nested fields: {car.model}, {pickup.location}, {driver.name}
+6. Use dot notation for nested fields: {vehicle.model}, {pickup.location}, {driver.name}
 7. Keep ALL other text exactly as it appears (labels, spacing, line breaks)
 8. **DO NOT annotate email headers (From:, To:, Date:, Subject:)**
 9. **DO NOT annotate forwarded message markers**
 10. Only annotate actual car rental booking data values
+11. **STRICT CHECK (MANDATORY)**: Never repeat any placeholder key. Each field placeholder can appear at most once (0 or 1 time) in the final template.
+12. If multiple candidate locations exist for the same field, keep only one BEST-MATCH occurrence and leave all other occurrences as plain text.
 
 ================================
 CAR RENTAL-SPECIFIC FIELD MAPPING
 ================================
 
 **Car/Vehicle Information:**
-- Rental company/provider → {car.rentalCompany}
-- Car model/type → {car.model}
-- Vehicle category (Sedan, SUV, Hatchback) → {car.category}
-- Fuel type (Petrol, Diesel, Electric) → {car.fuelType}
-- Transmission (Manual, Automatic) → {car.transmission}
+- Rental company/provider → {rentalCompany.name}
+- Car model/type → {vehicle.model}
+- Vehicle category (Sedan, SUV, Hatchback) → {vehicle.category}
+- Fuel type (Petrol, Diesel, Electric) → {vehicle.fuelType}
+- Transmission (Manual, Automatic) → {vehicle.transmission}
 
 **Pickup Details:**
 - Pickup location/address → {pickup.location}
-- Pickup city → {pickup.city}
-- Pickup date and time → {pickup.scheduledTime}
+- Pickup date and time → {pickup.dateTime}
 
 **Drop-off Details:**
 - Drop-off location/address → {dropoff.location}
-- Drop-off city → {dropoff.city}
-- Drop-off date and time → {dropoff.scheduledTime}
+- Drop-off date and time → {dropoff.dateTime}
 
 **Driver (if applicable):**
 - Driver name → {driver.name}
-- Driver phone → {driver.phone}
 - Driver license → {driver.licenseNumber}
 
 **Booking:**
 - Booking ID/reference → {bookingId}
 - Confirmation number → {bookingReference}
 
-**Rental Details:**
-- Rental duration → {rental.duration}
-- Total kilometers included → {rental.includedKilometers}
-- Extra km charges → {rental.extraKmCharge}
-
-**Fare:**
-- Total amount → {fare.amount}
-- Currency → {fare.currency}
-- Security deposit → {fare.securityDeposit}
+**Rate:**
+- Total amount → {rate.totalAmount}
+- Currency → {rate.currency}
+- Daily rate → {rate.dailyRate}
+- Number of days → {rate.numberOfDays}
 
 ================================
 EXAMPLE 1: Zoomcar Rental
@@ -110,24 +105,22 @@ Booking ID: {bookingId}
 Confirmation Code: {bookingReference}
 
 Vehicle Details:
-Car: {car.model} ({car.category})
-Fuel Type: {car.fuelType}
-Transmission: {car.transmission}
+Car: {vehicle.model} ({vehicle.category})
+Fuel Type: {vehicle.fuelType}
+Transmission: {vehicle.transmission}
 
 Pickup Details:
 Location: {pickup.location}
-Date & Time: {pickup.scheduledTime}
+Date & Time: {pickup.dateTime}
 
 Drop-off Details:
 Location: {dropoff.location}
-Date & Time: {dropoff.scheduledTime}
+Date & Time: {dropoff.dateTime}
 
-Rental Duration: {rental.duration}
-Included Kilometers: {rental.includedKilometers}
-Extra Km Charge: {rental.extraKmCharge}
+Rental Duration: {rate.numberOfDays} days
+Daily Rate: {rate.dailyRate}
 
-Total Rental Charges: {fare.currency}
-Security Deposit: {fare.securityDeposit}"
+Total Rental Charges: {rate.currency}"
 
 ================================
 EXAMPLE 2: Ola Outstation Cab
@@ -164,7 +157,7 @@ Annotated Template:
 "Ola Outstation Booking
 
 Trip ID: {bookingId}
-Route: {pickup.city} to {dropoff.city} (Round Trip)
+Route: {pickup.location} to {dropoff.location} (Round Trip)
 
 Cab Details:
 Vehicle: {car.model} ({car.category})
