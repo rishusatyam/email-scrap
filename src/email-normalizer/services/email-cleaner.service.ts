@@ -19,6 +19,22 @@ export const cleanEmailBodies = (htmlBody?: string, textBody?: string): CleanedE
   return result;
 };
 
+// Converts all Unicode space variants (NBSP, thin space, figure space, etc.) to plain ASCII spaces
+// This ensures consistent whitespace across email bodies from different providers and sources.
+// Prevents template matching failures caused by hidden spacing differences that look identical to users.
+export const canonicalizeWhitespace = (text: string): string => {
+  if (!text) return '';
+
+  // Convert Unicode space separators and NBSP variants to plain spaces.
+  const withPlainSpaces = text.replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ');
+
+  // Collapse consecutive spaces while preserving line boundaries.
+  return withPlainSpaces
+    .split('\n')
+    .map((line) => line.replace(/[ ]{2,}/g, ' '))
+    .join('\n');
+};
+
 const cleanHtmlBody = (html: string): string => {
   if (!html) return '';
 
@@ -194,10 +210,15 @@ const fixSpacing = (text: string): string => {
 };
 
 
+// Normalizes all whitespace variations: converts Unicode spaces to plain spaces,
+// collapses consecutive spaces, fixes line endings, and trims lines.
+// Ensures consistent and clean text for template matching and LLM processing.
 const normalizeWhitespace = (text: string): string => {
   if (!text) return '';
 
   let normalized = text;
+
+  normalized = canonicalizeWhitespace(normalized);
 
   // Normalize line endings
   normalized = normalized.replace(/\r\n/g, '\n');

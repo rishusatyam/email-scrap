@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { MapperService } from '../services/mapper.service';
 import { MapEmailRequest } from '../types';
+// Imports canonicalizeWhitespace to normalize Unicode spaces (NBSP, etc.) to plain spaces
+
+import { canonicalizeWhitespace } from '../../email-normalizer/services/email-cleaner.service';
 
 export class MapperController {
   private mapperService: MapperService;
@@ -21,6 +24,11 @@ export class MapperController {
         });
         return;
       }
+
+      // Normalize email bodies by converting Unicode spaces to plain spaces
+      // This ensures consistent template matching and avoids extraction boundary errors
+      request.cleanedHtmlBody = this.normalizeOptionalBody(request.cleanedHtmlBody);
+      request.cleanedTextBody = this.normalizeOptionalBody(request.cleanedTextBody);
 
       const mappedData = await this.mapperService.mapEmail(request);
 
@@ -60,5 +68,16 @@ export class MapperController {
     }
 
     return null;
+  }
+
+  // Helper method to normalize optional body fields by canonicalizing whitespace
+  // Converts Unicode space variants (NBSP, figure space, etc.) to plain spaces
+  // Returns undefined if value is empty or falsy
+  private normalizeOptionalBody(value?: string): string | undefined {
+    if (!value) {
+      return value;
+    }
+
+    return canonicalizeWhitespace(value);
   }
 }

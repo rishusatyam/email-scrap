@@ -25,8 +25,8 @@ export class BusPassengerExtractor {
     const ticketNumber = this.extractTicketNumber(normalized);
 
     // Matches passenger rows like:
-    // "1 Ms. Nisha 21 Seater" or "2 Mr. Rahul L5 Sleeper"
-    const rowRegex = /(\d+)\s*(Mr\.?|Ms\.?|Mrs\.?|Miss\.?|Mstr\.?)\s*([A-Za-z][A-Za-z\s'.-]{1,60}?)\s+([A-Za-z]?\d{1,3}[A-Za-z]?)\s*(Seater|Sleeper|Lower\s*Berth|Upper\s*Berth|Berth)?(?=\s*\d+\s*(?:Mr\.?|Ms\.?|Mrs\.?|Miss\.?|Mstr\.?)|\s*$)/gi;
+    // "1 Ms. Nisha 21 Seater" or "2 Mr. satyam L5 Sleeper"
+    const rowRegex = /(\d+)\s*(Mr\.?|Ms\.?|Mrs\.?|Miss\.?|Mstr\.?)\s*([A-Za-z][A-Za-z\s'.-]{1,60}?)\s+([A-Za-z]{0,2}\d{1,3}[A-Za-z]{0,2}|[A-Za-z])\s*(Seater|Sleeper|Lower\s*Berth|Upper\s*Berth|Berth)?(?=\s*\d+\s*(?:Mr\.?|Ms\.?|Mrs\.?|Miss\.?|Mstr\.?)|\s*$)/gi;
 
     let match: RegExpExecArray | null;
     while ((match = rowRegex.exec(passengerSection)) !== null) {
@@ -44,13 +44,47 @@ export class BusPassengerExtractor {
 
       passengers.push({
         name: fullName,
-        seatNumber,
+        seatNumber: this.normalizeSeatNumber(seatNumber),
         ticketNumber: ticketNumber || undefined,
         passengerType,
       });
     }
 
-    return passengers;
+    // Fallback for lines like: "1. Gaurav Sanwal Male Seat No: 5"
+    const travellerRegex = /(\d+)[\.)]?\s*([A-Za-z][A-Za-z\s'.-]{1,60})\s+(Male|Female|M|F|Adult|Child|Senior)?\s*(?:Seat\s*No\.?\s*[:\-]?\s*)?([A-Za-z]{0,2}\d{1,3}[A-Za-z]{0,2}|[A-Za-z])\b/gi;
+    while ((match = travellerRegex.exec(passengerSection)) !== null) {
+      const name = (match[2] || '').trim().replace(/\s+/g, ' ');
+      const seatNumber = this.normalizeSeatNumber(match[4] || '');
+      if (!name || !seatNumber || !this.isLikelyName(name)) {
+        continue;
+      }
+
+      passengers.push({
+        name,
+        seatNumber,
+        ticketNumber: ticketNumber || undefined,
+        passengerType: this.mapPassengerType((match[3] || '').toLowerCase(), ''),
+      });
+    }
+
+    // Fallback for compact lines like: "GAURAV SANWAL 21YRS, MALE D"
+    const compactRegex = /([A-Z][A-Z\s'.-]{2,60})\s+\d{1,2}YRS?,\s*(MALE|FEMALE|M|F)\s+([A-Za-z]{0,2}\d{1,3}[A-Za-z]{0,2}|[A-Za-z])\b/g;
+    while ((match = compactRegex.exec(passengerSection)) !== null) {
+      const name = this.toTitleCase((match[1] || '').trim().replace(/\s+/g, ' '));
+      const seatNumber = this.normalizeSeatNumber(match[3] || '');
+      if (!name || !seatNumber || !this.isLikelyName(name)) {
+        continue;
+      }
+
+      passengers.push({
+        name,
+        seatNumber,
+        ticketNumber: ticketNumber || undefined,
+        passengerType: this.mapPassengerType((match[2] || '').toLowerCase(), ''),
+      });
+    }
+
+    return this.deduplicatePassengers(passengers);
   }
 
   private static normalizeWhitespace(text: string): string {
@@ -58,14 +92,14 @@ export class BusPassengerExtractor {
   }
 
   private static extractPassengerSection(text: string): string | null {
-    const startMatch = text.match(/Passenger\s+Details/i);
+    const startMatch = text.match(/Passenger\s+Details|Traveller\s+Details|Traveler\s+Details/i);
     if (!startMatch || startMatch.index === undefined) {
       return null;
     }
 
     const startIndex = startMatch.index + startMatch[0].length;
     const remaining = text.substring(startIndex);
-    const endMatch = remaining.match(/Boarding\s+and\s+Drop\s+Point\s+Details|Boarding\s+Point\s+Details|Online\s+Cancellation\s+and\s+Rules/i);
+    const endMatch = remaining.match(/Boarding\s+and\s+Drop\s+Point\s+Details|Boarding\s+Point\s+Details|Online\s+Cancellation\s+and\s+Rules|Fare\s+Details|Fare\s*&\s*Payment\s*Details|Additional\s+Services|Contact\s+Details|Terms\s+and\s+conditions/i);
     const endIndex = endMatch && endMatch.index !== undefined ? endMatch.index : remaining.length;
 
     return remaining.substring(0, endIndex).trim() || null;
@@ -78,8 +112,12 @@ export class BusPassengerExtractor {
   }
 
   private static mapPassengerType(title: string, seatType: string): string | undefined {
-    if (title === 'mstr') {
+    if (title === 'mstr' || title === 'child') {
       return 'child';
+    }
+
+    if (title === 'f' || title === 'female' || title === 'm' || title === 'male' || title === 'adult') {
+      return 'adult';
     }
 
     if (seatType.toLowerCase().includes('senior')) {
@@ -87,5 +125,56 @@ export class BusPassengerExtractor {
     }
 
     return 'adult';
+  }
+
+  private static normalizeSeatNumber(value: string): string {
+    return value.replace(/\s+/g, '').trim().toUpperCase();
+  }
+
+  private static isLikelyName(value: string): boolean {
+    if (!value || value.length < 2 || value.length > 70) return false;
+    if (!/[A-Za-z]/.test(value)) return false;
+    if (/[0-9]/.test(value)) return false;
+    return true;
+  }
+
+  private static toTitleCase(value: string): string {
+    return value
+      .toLowerCase()
+      .split(' ')
+      .map((word) => (word ? `${word[0].toUpperCase()}${word.slice(1)}` : word))
+      .join(' ');
+  }
+
+  private static deduplicatePassengers(passengers: Array<{
+    name?: string;
+    seatNumber?: string;
+    ticketNumber?: string;
+    passengerType?: string;
+  }>): Array<{
+    name?: string;
+    seatNumber?: string;
+    ticketNumber?: string;
+    passengerType?: string;
+  }> {
+    const unique = new Map<string, {
+      name?: string;
+      seatNumber?: string;
+      ticketNumber?: string;
+      passengerType?: string;
+    }>();
+
+    for (const passenger of passengers) {
+      const name = (passenger.name || '').trim();
+      const seat = (passenger.seatNumber || '').trim();
+      if (!name || !seat) continue;
+
+      const key = `${name.toLowerCase()}|${seat.toUpperCase()}`;
+      if (!unique.has(key)) {
+        unique.set(key, passenger);
+      }
+    }
+
+    return Array.from(unique.values());
   }
 }

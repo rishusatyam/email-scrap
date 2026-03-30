@@ -28,7 +28,7 @@ INSTRUCTIONS
 3. Look for the MAIN bus booking information section
 4. Identify ALL data values that match bus booking fields
 5. Replace each data value with a placeholder: {fieldPath}
-6. Use dot notation for nested fields: {bus.operator}, {departure.city}, {passenger.name}
+6. Use dot notation for nested fields: {bus.operator}, {departure.city}, {passengers[].name}
 7. Keep ALL other text exactly as it appears (labels, spacing, line breaks)
 8. **DO NOT annotate email headers (From:, To:, Date:, Subject:)**
 9. **DO NOT annotate forwarded message markers**
@@ -60,16 +60,40 @@ BUS-SPECIFIC FIELD MAPPING
 **Passenger (repeatable rows):**
 - Passenger name → {passengers[].name}
 - Seat number → {passengers[].seatNumber}
-- Ticket/PNR number → {passengers[].ticketNumber}
+- Passenger-specific ticket number (if explicitly tied to a passenger row) → {passengers[].ticketNumber}
 - Passenger type (Adult/Child) → {passengers[].passengerType}
 
 **Booking:**
-- Booking ID/reference → {bookingId}
-- Confirmation number → {bookingReference}
+- Booking ID / ticket id / order id / transaction id → {bookingId}
+- Booking reference / confirmation number / PNR (booking-level) → {bookingReference}
 
 **Fare:**
 - Total amount → {fare.amount}
 - Currency symbol → {fare.currency}
+
+================================
+FIELD DISAMBIGUATION (CRITICAL)
+================================
+
+Use these strict rules to avoid mislabeling:
+
+1. Label-context priority is mandatory:
+- Labels like "Booking Reference", "Confirmation", "PNR", "Operator PNR", "Trip Ref", "Ref No" map to {bookingReference} by default.
+- Labels like "Booking ID", "Ticket ID", "Order ID", "Transaction ID" map to {bookingId}.
+
+2. {passengers[].ticketNumber} is ONLY for passenger-row scoped values:
+- Map to {passengers[].ticketNumber} only when ticket number appears inside a passenger row/table block with passenger identity (name/seat/age/gender) nearby.
+- If there is a single global PNR/Ticket Number in booking header/summary, do NOT map it to {passengers[].ticketNumber}; map to {bookingReference}.
+
+3. Tie-breaker rule:
+- If uncertain between {bookingReference} and {passengers[].ticketNumber}, choose {bookingReference}.
+
+4. Never assign the same global identifier to both fields:
+- Do not duplicate one booking-level number into passenger ticket placeholders.
+
+5. Repeated values:
+- For booking-level fields ({bookingId}, {bookingReference}), annotate only the first meaningful occurrence.
+- Passenger placeholders can repeat only when there are clearly repeated passenger rows.
 
 ================================
 EXAMPLE 1: MakeMyTrip Bus Booking
@@ -121,7 +145,7 @@ Annotated Template:
 *Passenger Details*
 *Name:* {passengers[].name}
 *Seat Number:* {passengers[].seatNumber}
-*Total Fare:* {fare.currency}
+*Total Fare:* {fare.amount}
 
 *Boarding Point Details*
 *Boarding Point:* {departure.terminal}
@@ -153,7 +177,7 @@ Fare: Rs. 1200"
 Annotated Template:
 "RedBus Ticket Confirmation
 
-PNR: {passengers[].ticketNumber}
+PNR: {bookingReference}
 Operator: {bus.operator}
 Bus Type: {bus.busType}
 Route: {departure.city} to {arrival.city}
@@ -178,6 +202,7 @@ IMPORTANT RULES FOR BUS BOOKINGS
 - Non-passenger placeholders should appear only once in the template
 - For non-passenger values, if a value appears multiple times, replace only the FIRST occurrence
 - Passenger placeholders ({passengers[].name}, {passengers[].seatNumber}, {passengers[].ticketNumber}, {passengers[].passengerType}) can repeat for each passenger row
+- "PNR" should map to {bookingReference} unless the email explicitly shows passenger-level ticket numbers per passenger row
 
 ================================
 OUTPUT FORMAT

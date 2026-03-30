@@ -6,7 +6,7 @@ import { SchemaLoaderUtil } from '../utils/schema-loader.util';
 import { TypeConverterUtil } from '../utils/type-converter.util';
 import { DataCleanerUtil } from '../utils/data-cleaner.util';
 import { HashContextUtil } from '../utils/hash-context.util';
-import { BusPassengerExtractor } from '../extractors';
+import { BusPassengerExtractor, RailPassengerExtractor } from '../extractors';
 export class MapperService {
   private llmService: LLMService;
   private templateRuleDAO: TemplateRuleDAO;
@@ -25,13 +25,16 @@ export class MapperService {
 
     const schema = await SchemaLoaderUtil.loadSchema(request.bookingType);
 
+    // Testing mode: force each run to use a unique provider key.
+    const provider = this.getRandomizedProvider(request.provider);
+
     // Step 1: Get or generate template
-    const templateData = await this.templateRuleDAO.findByProvider(request.provider);
+    const templateData = await this.templateRuleDAO.findByProvider(provider);
 
     let template: string;
     if (!templateData) {
-      console.log(`[Mapper] No template found for provider: ${request.provider}. Calling LLM...`);
-      const generatedTemplate = await this.llmService.generateTemplate(body, schema, request.provider, request.bookingType);
+      console.log(`[Mapper] No template found for provider: ${provider}. Calling LLM...`);
+      const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, request.bookingType);
       template = generatedTemplate.template;
       
       // Extract hashTable from generated template
@@ -39,10 +42,10 @@ export class MapperService {
       console.log(`[Mapper] Generated template with ${Object.keys(hashTable).length} field contexts`);
       
       // Save template with hashTable
-      await this.templateRuleDAO.create(request.provider, template, hashTable);
+      await this.templateRuleDAO.create(provider, template, hashTable);
       console.log('[Mapper] Template and hashTable cached for future use');
     } else {
-      console.log(`[Mapper] Using cached template for provider: ${request.provider}`);
+      console.log(`[Mapper] Using cached template for provider: ${provider}`);
       template = templateData.template;
     }
 
@@ -64,13 +67,13 @@ export class MapperService {
         console.log('[Validation] ✗ Extraction rate <80% - Email format has changed');
         console.log('[Mapper] Regenerating template...');
         
-        const generatedTemplate = await this.llmService.generateTemplate(body, schema, request.provider, request.bookingType);
+        const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, request.bookingType);
         template = generatedTemplate.template;
         
         const newHashTable = HashContextUtil.extractHashTable(template);
         console.log(`[Mapper] Generated new template with ${Object.keys(newHashTable).length} field contexts`);
         
-        await this.templateRuleDAO.create(request.provider, template, newHashTable);
+        await this.templateRuleDAO.create(provider, template, newHashTable);
         console.log('[Mapper] Updated template and hashTable in database');
         
         const newExtractedValues = TemplateMatcherUtil.extractValues(body, template);
@@ -131,7 +134,7 @@ export class MapperService {
           console.log('[Mapper] Regenerating template...');
           
           // Call LLM to regenerate template
-          const generatedTemplate = await this.llmService.generateTemplate(body, schema, request.provider, request.bookingType);
+          const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, request.bookingType);
           template = generatedTemplate.template;
           
           // Extract new hashTable
@@ -139,7 +142,7 @@ export class MapperService {
           console.log(`[Mapper] Generated new template with ${Object.keys(newHashTable).length} field contexts`);
           
           // Update database with new template and hashTable
-          await this.templateRuleDAO.create(request.provider, template, newHashTable);
+          await this.templateRuleDAO.create(provider, template, newHashTable);
           console.log('[Mapper] Updated template and hashTable in database');
           
           // Re-extract values with new template
@@ -172,6 +175,9 @@ export class MapperService {
       seatNumber?: string;
       ticketNumber?: string;
       passengerType?: string;
+      coach?: string;
+      class?: string;
+      seatType?: string;
     }> = [];
 
     if (bookingType === 'bus') {
@@ -185,9 +191,32 @@ export class MapperService {
       }
     }
 
+    if (bookingType === 'rail') {
+      passengers = RailPassengerExtractor.extract(body);
+
+      // Passenger array is extracted separately to avoid flattening repeated values.
+      for (const key of Object.keys(nextExtractedValues)) {
+        if (key.startsWith('passenger.') || key.startsWith('passengers[].')) {
+          delete nextExtractedValues[key];
+        }
+      }
+    }
+
     const mappedData = TemplateMatcherUtil.buildNestedObject(nextExtractedValues);
 
     if (bookingType === 'bus') {
+      if (passengers.length > 0) {
+        mappedData.passengers = passengers;
+      } else if (mappedData.passenger && typeof mappedData.passenger === 'object') {
+        mappedData.passengers = [mappedData.passenger];
+      }
+
+      if (mappedData.passenger) {
+        delete mappedData.passenger;
+      }
+    }
+
+    if (bookingType === 'rail') {
       if (passengers.length > 0) {
         mappedData.passengers = passengers;
       } else if (mappedData.passenger && typeof mappedData.passenger === 'object') {
@@ -221,5 +250,12 @@ export class MapperService {
     }
 
     return null;
+  }
+
+  private getRandomizedProvider(baseProvider: string): string {
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const randomizedProvider = `${baseProvider}-test-${suffix}`;
+    console.log(`[Mapper] Testing mode provider override: ${baseProvider} -> ${randomizedProvider}`);
+    return randomizedProvider;
   }
 }

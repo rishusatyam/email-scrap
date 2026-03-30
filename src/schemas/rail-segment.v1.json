@@ -96,28 +96,31 @@
       },
       "required": ["station", "scheduledTime"]
     },
-    "passenger": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "ticketNumber": {
-          "type": "string"
-        },
-        "seatNumber": {
-          "type": "string"
-        },
-        "coach": {
-          "type": "string"
-        },
-        "class": {
-          "type": "string",
-          "description": "Seat class (economy, first, business, sleeper, or custom value)"
-        },
-        "seatType": {
-          "type": "string",
-          "description": "Seat type (window, aisle, table, or custom value)"
+    "passengers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "ticketNumber": {
+            "type": "string"
+          },
+          "seatNumber": {
+            "type": "string"
+          },
+          "coach": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string",
+            "description": "Seat class (economy, first, business, sleeper, or custom value)"
+          },
+          "seatType": {
+            "type": "string",
+            "description": "Seat type (window, aisle, table, or custom value)"
+          }
         }
       }
     },

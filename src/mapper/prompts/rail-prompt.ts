@@ -29,13 +29,14 @@ INSTRUCTIONS
 3. Look for the MAIN train booking information section
 4. Identify ALL data values that match train booking fields
 5. Replace each data value with a placeholder: {fieldPath}
-6. Use dot notation for nested fields: {train.trainNumber}, {departure.station}, {passenger.coach}
+6. Use dot notation for nested fields: {train.trainNumber}, {departure.station}, {passengers[].coach}
 7. Keep ALL other text exactly as it appears (labels, spacing, line breaks)
 8. **DO NOT annotate email headers (From:, To:, Date:, Subject:)**
 9. **DO NOT annotate forwarded message markers**
 10. Only annotate actual train booking data values
-11. **STRICT CHECK (MANDATORY)**: Never repeat any placeholder key. Each field placeholder can appear at most once (0 or 1 time) in the final template.
-12. If multiple candidate locations exist for the same field, keep only one BEST-MATCH occurrence and leave all other occurrences as plain text.
+11. Non-passenger placeholder keys can appear at most once (0 or 1 time) in the final template.
+12. Passenger placeholders can repeat ONLY for real passenger rows/blocks.
+13. If multiple candidate locations exist for the same non-passenger field, keep only one BEST-MATCH occurrence and leave all other occurrences as plain text.
 
 ================================
 TRAIN-SPECIFIC FIELD MAPPING
@@ -60,12 +61,12 @@ TRAIN-SPECIFIC FIELD MAPPING
 - Arrival date and time → {arrival.scheduledTime}
 
 **Passenger:**
-- Passenger name → {passenger.name}
-- Coach/compartment (B3, S5, etc.) → {passenger.coach}
-- Seat/berth number → {passenger.seatNumber}
-- Class (1AC, 2AC, 3AC, SL, etc.) → {passenger.class}
-- Seat type (Window, Aisle, etc.) → {passenger.seatType}
-- Ticket/PNR number → {passenger.ticketNumber}
+- Passenger name → {passengers[].name}
+- Coach/compartment (B3, S5, etc.) → {passengers[].coach}
+- Seat/berth number → {passengers[].seatNumber}
+- Class (1AC, 2AC, 3AC, SL, etc.) → {passengers[].class}
+- Seat type (Window, Aisle, etc.) → {passengers[].seatType}
+- Passenger-specific ticket number (only if explicitly tied to a passenger row) → {passengers[].ticketNumber}
 
 **Booking:**
 - PNR number → {bookingId}
@@ -118,11 +119,11 @@ Departure: {departure.scheduledTime}
 Arrival: {arrival.scheduledTime}
 
 Passenger Details:
-Name: {passenger.name}
-Coach: {passenger.coach}
-Seat: {passenger.seatNumber}
-Class: {passenger.class}
-Berth: {passenger.seatType}
+Name: {passengers[].name}
+Coach: {passengers[].coach}
+Seat: {passengers[].seatNumber}
+Class: {passengers[].class}
+Berth: {passengers[].seatType}
 
 Fare Details:
 Base Fare: {fare.currency}
@@ -158,9 +159,9 @@ Route: {departure.station} to {arrival.station}
 Departure: Platform {departure.platform}, {departure.scheduledTime}
 Arrival: Platform {arrival.platform}, {arrival.scheduledTime}
 
-Traveler: {passenger.name}
-Coach/Seat: {passenger.coach}/{passenger.seatNumber} ({passenger.class})
-Ticket Number: {passenger.ticketNumber}
+Traveler: {passengers[].name}
+Coach/Seat: {passengers[].coach}/{passengers[].seatNumber} ({passengers[].class})
+Ticket Number: {passengers[].ticketNumber}
 
 Amount Paid: {fare.currency}"
 
@@ -175,10 +176,15 @@ IMPORTANT RULES FOR TRAIN BOOKINGS
 - **Class** includes: 1AC, 2AC, 3AC, Sleeper (SL), Chair Car (CC), First Class, General
 - **Train Types**: Rajdhani, Shatabdi, Duronto, Express, Superfast, Local, Metro
 - **PNR** = Passenger Name Record (unique booking identifier)
+- Single passenger and multi-passenger emails should both use passengers[] placeholders.
+- For a single passenger, annotate one passenger row/block using passengers[].*.
+- For multiple passengers, repeat passengers[].* placeholders only inside actual repeated passenger rows/blocks.
+- Booking-level PNR/Ticket in booking header maps to {bookingReference} (or {bookingId} when explicitly booking id).
+- Use {passengers[].ticketNumber} only when ticket number is explicitly passenger-row scoped.
 - Replace ONLY data values, NOT labels like "Train:", "Platform:", "Coach:", etc.
 - Keep exact spacing, line breaks, and formatting from the original email
-- Each placeholder should appear ONLY ONCE in the template
-- If a value appears multiple times, replace only the FIRST occurrence
+- Non-passenger placeholders should appear only once in the template
+- If a non-passenger value appears multiple times, replace only the FIRST occurrence
 
 ================================
 OUTPUT FORMAT
