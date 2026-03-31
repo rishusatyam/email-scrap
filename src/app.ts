@@ -5,7 +5,7 @@ import { subscriptionRoutes } from './subscriptions';
 import { normalizerRoutes } from './email-normalizer';
 import { mapperRoutes } from './mapper';
 import { pdfRoutes } from './pdf-extractor';
-import { pdfMapperRoutes } from './mapper/pdfmapper';
+import { pdfMapperRoutes } from './pdfmapper';
 
 const app: Express = express();
 

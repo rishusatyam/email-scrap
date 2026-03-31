@@ -3,7 +3,7 @@ export interface MapEmailRequest {
   cleanedHtmlBody?: string;
   cleanedTextBody?: string;
   provider: string;
-  bookingType: 'bus' | 'flight' | 'hotel' | 'car' | 'rail';
+  bookingType: 'bus' | 'flight' | 'hotel' | 'car' | 'rail' | 'train';
 }
 
 export interface MapEmailResponse {

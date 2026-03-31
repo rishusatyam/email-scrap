@@ -5,6 +5,7 @@ export interface StrictValidationInput {
   body?: string;
   cleanedHtmlBody?: string;
   cleanedTextBody?: string;
+  // Deprecated: kept for compatibility, intentionally not used by strict validator logic.
   pdfText?: string;
   attachments?: Array<{
     filename?: string;
@@ -23,7 +24,6 @@ interface StrictSignals {
   hasItinerary: boolean;
   hasPassenger: boolean;
   hasPdf: boolean;
-  hasPdfBookingData: boolean;
   isPromo: boolean;
   isSupport: boolean;
   isLifecycle: boolean;
@@ -31,6 +31,8 @@ interface StrictSignals {
   hasSupportId: boolean;
   hasStrongBookingSubject: boolean;
   detectedTypes: string[];
+  score: number;
+  scoreBreakdown: string[];
 }
 
 const BOOKING_TYPE_KEYWORDS: Record<string, string[]> = {
@@ -84,37 +86,108 @@ const detectTypes = (text: string): string[] => {
   return detected;
 };
 
+const countMatches = (regex: RegExp, texts: string[]): number =>
+  texts.reduce((count, text) => count + (regex.test(text) ? 1 : 0), 0);
+
 const extractSignals = (input: StrictValidationInput): StrictSignals => {
   const subject = toLower(input.subject);
   const body = toLower(input.body);
   const cleanedHtmlBody = toLower(input.cleanedHtmlBody);
   const cleanedTextBody = toLower(input.cleanedTextBody);
-  const pdfText = toLower(input.pdfText);
 
   const combinedText = `${subject} ${body} ${cleanedHtmlBody} ${cleanedTextBody}`.trim();
-  const textWithPdf = `${combinedText} ${pdfText}`.trim();
+  const cleanBodies = [cleanedHtmlBody, cleanedTextBody].filter(Boolean);
+  const allBodies = [subject, body, ...cleanBodies].filter(Boolean);
 
-  const hasBookingId = BOOKING_ID_REGEX.test(textWithPdf);
-  const hasPNR = PNR_REGEX.test(textWithPdf);
-  const hasSupportId = SUPPORT_ID_REGEX.test(textWithPdf);
+  const bookingIdHits = countMatches(BOOKING_ID_REGEX, allBodies);
+  const pnrHits = countMatches(PNR_REGEX, allBodies);
+
+  const hasBookingId = bookingIdHits > 0;
+  const hasPNR = pnrHits > 0;
+  const hasSupportId = SUPPORT_ID_REGEX.test(combinedText);
 
   const hasItinerary =
-    ITINERARY_FROM_TO_REGEX.test(textWithPdf) ||
-    ITINERARY_DATE_REGEX.test(textWithPdf) ||
-    HOTEL_ITINERARY_REGEX.test(textWithPdf) ||
-    CAB_ITINERARY_REGEX.test(textWithPdf);
+    ITINERARY_FROM_TO_REGEX.test(combinedText) ||
+    ITINERARY_DATE_REGEX.test(combinedText) ||
+    HOTEL_ITINERARY_REGEX.test(combinedText) ||
+    CAB_ITINERARY_REGEX.test(combinedText);
 
-  const hasPassenger = PASSENGER_REGEX.test(textWithPdf);
+  const hasPassenger = PASSENGER_REGEX.test(combinedText);
   const hasPdf = hasPdfAttachment(input.attachments);
 
-  const hasPdfBookingData =
-    pdfText.length > 0 && (BOOKING_ID_REGEX.test(pdfText) || PNR_REGEX.test(pdfText));
-
-  const isPromo = MARKETING_REGEX.test(textWithPdf) && FOOTER_REGEX.test(textWithPdf);
-  const isSupport = SUPPORT_REGEX.test(textWithPdf);
-  const isLifecycle = LIFECYCLE_REGEX.test(textWithPdf);
-  const isFeedback = FEEDBACK_REGEX.test(textWithPdf);
+  const isPromo = MARKETING_REGEX.test(combinedText) && FOOTER_REGEX.test(combinedText);
+  const isSupport = SUPPORT_REGEX.test(combinedText);
+  const isLifecycle = LIFECYCLE_REGEX.test(combinedText);
+  const isFeedback = FEEDBACK_REGEX.test(combinedText);
   const hasStrongBookingSubject = STRONG_SUBJECT_REGEX.test(subject);
+
+  // Score model
+  // - PDF presence is a positive trust signal (+2)
+  // - Clean body evidence has higher weight than raw body
+  // - Negative intents reduce score but do not auto-block because PDF may be absent
+  let score = 0;
+  const scoreBreakdown: string[] = [];
+
+  if (bookingIdHits > 0) {
+    const delta = 3;
+    score += delta;
+    scoreBreakdown.push(`bookingId+${delta}`);
+  }
+
+  if (pnrHits > 0) {
+    const delta = 3;
+    score += delta;
+    scoreBreakdown.push(`pnr+${delta}`);
+  }
+
+  if (hasItinerary) {
+    const delta = 2;
+    score += delta;
+    scoreBreakdown.push(`itinerary+${delta}`);
+  }
+
+  if (hasPassenger) {
+    const delta = 1;
+    score += delta;
+    scoreBreakdown.push(`passenger+${delta}`);
+  }
+
+  if (hasStrongBookingSubject) {
+    const delta = 2;
+    score += delta;
+    scoreBreakdown.push(`subject+${delta}`);
+  }
+
+  if (hasPdf) {
+    const delta = 2;
+    score += delta;
+    scoreBreakdown.push(`pdf+${delta}`);
+  }
+
+  if (isPromo) {
+    const delta = -2;
+    score += delta;
+    scoreBreakdown.push(`promo${delta}`);
+  }
+
+  if (isFeedback) {
+    const delta = -2;
+    score += delta;
+    scoreBreakdown.push(`feedback${delta}`);
+  }
+
+  if (isLifecycle) {
+    const delta = -1;
+    score += delta;
+    scoreBreakdown.push(`lifecycle${delta}`);
+  }
+
+  // Soft-penalize support/case context, but avoid hard block solely due to no PDF.
+  if (isSupport && hasSupportId && !hasBookingId && !hasPNR) {
+    const delta = -2;
+    score += delta;
+    scoreBreakdown.push(`supportCase${delta}`);
+  }
 
   return {
     hasBookingId,
@@ -122,14 +195,15 @@ const extractSignals = (input: StrictValidationInput): StrictSignals => {
     hasItinerary,
     hasPassenger,
     hasPdf,
-    hasPdfBookingData,
     isPromo,
     isSupport,
     isLifecycle,
     isFeedback,
     hasSupportId,
     hasStrongBookingSubject,
-    detectedTypes: detectTypes(textWithPdf),
+    detectedTypes: detectTypes(combinedText),
+    score,
+    scoreBreakdown,
   };
 };
 
@@ -137,54 +211,45 @@ export const validateStrictBooking = (
   input: StrictValidationInput
 ): StrictValidationResult => {
   const signals = extractSignals(input);
-  const hasProof = signals.hasBookingId || signals.hasPNR || signals.hasPdfBookingData;
-  const hasStructure = signals.hasItinerary || signals.hasPassenger || signals.hasPdf;
+  const hasProof = signals.hasBookingId || signals.hasPNR;
+  const hasStructure = signals.hasItinerary || signals.hasPassenger;
+  const typeInfo = signals.detectedTypes.length > 0 ? signals.detectedTypes.join(',') : 'unknown';
 
-  // Rule 1: Hard block when noisy intent has no booking proof.
-  if (
-    (signals.isPromo || signals.isSupport || signals.isLifecycle || signals.isFeedback) &&
-    !hasProof
-  ) {
-    return {
-      decision: 'BLOCK',
-      reason: `Hard block: negative intent without proof (promo=${signals.isPromo}, support=${signals.isSupport}, lifecycle=${signals.isLifecycle}, feedback=${signals.isFeedback})`,
-    };
-  }
-
-  // Guardrail: support-id context should not pass on weak proof alone.
-  if (signals.isSupport && signals.hasSupportId && !signals.hasPdfBookingData) {
-    return {
-      decision: 'BLOCK',
-      reason: 'Hard block: support/case context detected without PDF-backed booking proof',
-    };
-  }
-
-  // Subject fast-path: strong transactional subject + proof.
-  if (signals.hasStrongBookingSubject && hasProof && !signals.isSupport) {
-    const typeInfo = signals.detectedTypes.length > 0 ? signals.detectedTypes.join(',') : 'unknown';
+  // Fast-allow high confidence transactional signals.
+  if (signals.hasStrongBookingSubject && hasProof && hasStructure) {
     return {
       decision: 'ALLOW',
-      reason: `Fast allow: strong booking subject with proof (types=${typeInfo})`,
+      reason: `Fast allow: strong subject + proof + structure (types=${typeInfo}, score=${signals.score}, breakdown=${signals.scoreBreakdown.join('|')})`,
     };
   }
 
-  // Rule 2: Hard allow when proof + structure exists.
-  if (
-    hasProof &&
-    hasStructure &&
-    !signals.isSupport
-  ) {
-    const typeInfo = signals.detectedTypes.length > 0 ? signals.detectedTypes.join(',') : 'unknown';
+  // Main score-based allow path.
+  if (signals.score >= 4 && (hasProof || hasStructure)) {
     return {
       decision: 'ALLOW',
-      reason: `Hard allow: booking proof and structure present (types=${typeInfo})`,
+      reason: `Allow: score threshold met (types=${typeInfo}, score=${signals.score}, breakdown=${signals.scoreBreakdown.join('|')})`,
     };
   }
 
-  // Rule 3: Default deny.
+  // Defensive block for obvious non-transactional noise with weak evidence.
+  if ((signals.isPromo || signals.isFeedback) && !hasProof && !signals.hasPdf) {
+    return {
+      decision: 'BLOCK',
+      reason: `Block: promotional/feedback noise with weak evidence (types=${typeInfo}, score=${signals.score}, breakdown=${signals.scoreBreakdown.join('|')})`,
+    };
+  }
+
+  // Default path: allow when enough structured hints exist, otherwise block.
+  if (hasProof || (hasStructure && signals.score >= 2)) {
+    return {
+      decision: 'ALLOW',
+      reason: `Allow: sufficient structured indicators (types=${typeInfo}, score=${signals.score}, breakdown=${signals.scoreBreakdown.join('|')})`,
+    };
+  }
+
   return {
     decision: 'BLOCK',
-    reason: 'Fallback block: insufficient booking proof',
+    reason: `Block: insufficient transactional indicators (types=${typeInfo}, score=${signals.score}, breakdown=${signals.scoreBreakdown.join('|')})`,
   };
 };
 

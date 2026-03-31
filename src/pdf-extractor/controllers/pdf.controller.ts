@@ -46,7 +46,13 @@ export const extractPdfHandler = async (req: Request, res: Response): Promise<vo
     if (result.success) {
       res.status(200).json({
         success: true,
-        text: result.text,
+        file: result.file
+          ? {
+              originalname: result.file.originalname,
+              mimetype: result.file.mimetype,
+              size: result.file.size,
+            }
+          : undefined,
         debugPath: result.debugPath
       });
     } else {

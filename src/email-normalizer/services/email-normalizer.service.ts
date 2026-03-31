@@ -7,6 +7,8 @@ import { cleanEmailBodies } from './email-cleaner.service';
 import { detectBookingMeta } from '../../mapper/utils/booking-meta-detection.util';
 import { extractPdfFromGmail, extractPdfFromOutlook } from '../../pdf-extractor/services/pdf.service';
 import { MapperService } from '../../mapper/services/mapper.service';
+import { PdfMapperService } from '../../pdfmapper/services/pdf-mapper.service';
+import { PdfBookingType, PdfFileData } from '../../pdfmapper/types';
 import { logMappedEmail } from '../../mapper/utils/mapper-logger';
 import { validateStrictBooking } from '../../classification/strictvalidator';
 import { logNormalizedEmail } from '../utils/normalizer-logger';
@@ -14,9 +16,10 @@ import { logNormalizedEmail } from '../utils/normalizer-logger';
 export interface ProcessedNormalizedEmail extends NormalizedEmail {
   bookingType: string;
   provider: string;
+  structuredBookingData?: Record<string, any>;
   pdfData?: {
     success: boolean;
-    text?: string;
+    files?: PdfFileData[];
     error?: string;
   };
 }
@@ -84,7 +87,7 @@ interface OutlookAttachmentItem {
 
 interface PdfExtractionResult {
   success: boolean;
-  text?: string;
+  files?: PdfFileData[];
   error?: string;
 }
 
@@ -123,13 +126,13 @@ const extractCombinedPdfData = async (
   pdfAttachments: NormalizedEmail['attachments'],
   extractOne: (messageId: string, attachmentId: string, accessToken: string) => Promise<{
     success: boolean;
-    text?: string;
+    file?: PdfFileData;
     error?: string;
     debugPath?: string;
   }>,
   providerLabel: 'Gmail' | 'Outlook'
 ): Promise<PdfExtractionResult> => {
-  const extractedTextBlocks: string[] = [];
+  const files: PdfFileData[] = [];
   const errors: string[] = [];
 
   for (const [index, attachment] of pdfAttachments.entries()) {
@@ -138,8 +141,8 @@ const extractCombinedPdfData = async (
     );
 
     const pdfResult = await extractOne(messageId, attachment.attachmentId, accessToken);
-    if (pdfResult.success && pdfResult.text) {
-      extractedTextBlocks.push(`--- PDF ${index + 1}: ${attachment.filename} ---\n${pdfResult.text}`);
+    if (pdfResult.success && pdfResult.file) {
+      files.push(pdfResult.file);
       console.log(
         `[EmailNormalizer] ${providerLabel} PDF extraction success (${index + 1}/${pdfAttachments.length}) | filename=${attachment.filename}`
       );
@@ -151,18 +154,50 @@ const extractCombinedPdfData = async (
     }
   }
 
-  if (extractedTextBlocks.length > 0) {
+  if (files.length > 0) {
     return {
       success: true,
-      text: extractedTextBlocks.join('\n\n'),
+      files,
       error: errors.length > 0 ? `Partial extraction failure: ${errors.join(' | ')}` : undefined,
     };
   }
 
   return {
     success: false,
-    error: errors.length > 0 ? errors.join(' | ') : 'No PDF text could be extracted',
+    error: errors.length > 0 ? errors.join(' | ') : 'No PDF files could be extracted',
   };
+};
+
+const toPdfBookingType = (bookingType: string): PdfBookingType | null => {
+  const normalized = String(bookingType || '').toLowerCase();
+
+  if (normalized === 'train') {
+    return 'rail';
+  }
+
+  if (normalized === 'flight' || normalized === 'bus' || normalized === 'rail' || normalized === 'car' || normalized === 'hotel') {
+    return normalized as PdfBookingType;
+  }
+
+  return null;
+};
+
+const mapAllowedEmailWithPdfMapper = async (
+  pdfData: ProcessedNormalizedEmail['pdfData'],
+  bookingType: string,
+  provider: string
+): Promise<Record<string, any> | undefined> => {
+  if (!pdfData?.success || !pdfData.files || pdfData.files.length === 0) {
+    return undefined;
+  }
+
+  const mappedBookingType = toPdfBookingType(bookingType);
+  if (!mappedBookingType) {
+    return undefined;
+  }
+
+  const pdfMapperService = new PdfMapperService();
+  return pdfMapperService.mapPdfs(pdfData.files, mappedBookingType, provider);
 };
 
 export const normalizeOutlookEmail = (rawEmail: OutlookMessage): NormalizedEmail => {
@@ -253,7 +288,6 @@ export const processOutlookEmail = async (
     body: normalized.textBody,
     cleanedHtmlBody: normalized.cleanedHtmlBody,
     cleanedTextBody: normalized.cleanedTextBody,
-    pdfText: pdfData?.text,
     attachments: normalized.attachments,
   });
 
@@ -266,26 +300,48 @@ export const processOutlookEmail = async (
     pdfData,
   });
 
+  let structuredBookingData: Record<string, any> | undefined;
+
   if (strictValidation.decision === 'ALLOW') {
     console.log(
       `[EmailNormalizer] Strict validator passed for Outlook messageId=${rawEmail.id} | reason=${strictValidation.reason}`
     );
-    try {
-      console.log(`[EmailNormalizer] Calling mapper service for Outlook messageId=${rawEmail.id}`);
-      const mapperService = new MapperService();
-      const mappedData = await mapperService.mapEmail({
-        subject: normalized.subject,
-        cleanedHtmlBody: normalized.cleanedHtmlBody,
-        cleanedTextBody: normalized.cleanedTextBody,
-        provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown',
-        bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
-      });
 
-      const mappedFileName = `mapped_${rawEmail.id}.json`;
-      logMappedEmail(mappedFileName, mappedData);
-      console.log(`[EmailNormalizer] Outlook mapping completed and logged | messageId=${rawEmail.id}`);
-    } catch (mapperError: any) {
-      console.warn(`[EmailNormalizer] Outlook mapper service error: ${mapperError.message} - continuing without mapping`);
+    try {
+      structuredBookingData = await mapAllowedEmailWithPdfMapper(
+        pdfData,
+        bookingMeta.bookingType,
+        bookingMeta.provider
+      );
+
+      if (structuredBookingData) {
+        const mappedFileName = `mapped_pdf_${rawEmail.id}.json`;
+        logMappedEmail(mappedFileName, structuredBookingData);
+        console.log(`[EmailNormalizer] Outlook PDF mapper completed and logged | messageId=${rawEmail.id}`);
+      }
+    } catch (pdfMapperError: any) {
+      console.warn(`[EmailNormalizer] Outlook PDF mapper error: ${pdfMapperError.message} - falling back to mapper service`);
+    }
+
+    if (!structuredBookingData) {
+      try {
+        console.log(`[EmailNormalizer] Calling fallback mapper service for Outlook messageId=${rawEmail.id}`);
+        const mapperService = new MapperService();
+        const mappedData = await mapperService.mapEmail({
+          subject: normalized.subject,
+          cleanedHtmlBody: normalized.cleanedHtmlBody,
+          cleanedTextBody: normalized.cleanedTextBody,
+          provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown',
+          bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
+        });
+
+        const mappedFileName = `mapped_${rawEmail.id}.json`;
+        logMappedEmail(mappedFileName, mappedData);
+        structuredBookingData = mappedData;
+        console.log(`[EmailNormalizer] Outlook fallback mapping completed and logged | messageId=${rawEmail.id}`);
+      } catch (mapperError: any) {
+        console.warn(`[EmailNormalizer] Outlook fallback mapper error: ${mapperError.message} - continuing without mapping`);
+      }
     }
   } else {
     console.log(
@@ -296,6 +352,7 @@ export const processOutlookEmail = async (
   return {
     bookingType: bookingMeta.bookingType,
     provider: bookingMeta.provider,
+    structuredBookingData,
     ...normalized,
     pdfData,
   };
@@ -355,7 +412,6 @@ export const processGmailEmail = async (
     body: normalized.textBody,
     cleanedHtmlBody: normalized.cleanedHtmlBody,
     cleanedTextBody: normalized.cleanedTextBody,
-    pdfText: pdfData?.text,
     attachments: normalized.attachments,
   });
 
@@ -368,26 +424,48 @@ export const processGmailEmail = async (
     pdfData,
   });
 
+  let structuredBookingData: Record<string, any> | undefined;
+
   if (strictValidation.decision === 'ALLOW') {
     console.log(
       `[EmailNormalizer] Strict validator passed for messageId=${rawEmail.id} | reason=${strictValidation.reason}`
     );
-    try {
-      console.log(`[EmailNormalizer] Calling mapper service for messageId=${rawEmail.id}`);
-      const mapperService = new MapperService();
-      const mappedData = await mapperService.mapEmail({
-        subject: normalized.subject,
-        cleanedHtmlBody: normalized.cleanedHtmlBody,
-        cleanedTextBody: normalized.cleanedTextBody,
-        provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown',
-        bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
-      });
 
-      const mappedFileName = `mapped_${rawEmail.id}.json`;
-      logMappedEmail(mappedFileName, mappedData);
-      console.log(`[EmailNormalizer] Mapping completed and logged | messageId=${rawEmail.id}`);
-    } catch (mapperError: any) {
-      console.warn(`[EmailNormalizer] Mapper service error: ${mapperError.message} - continuing without mapping`);
+    try {
+      structuredBookingData = await mapAllowedEmailWithPdfMapper(
+        pdfData,
+        bookingMeta.bookingType,
+        bookingMeta.provider
+      );
+
+      if (structuredBookingData) {
+        const mappedFileName = `mapped_pdf_${rawEmail.id}.json`;
+        logMappedEmail(mappedFileName, structuredBookingData);
+        console.log(`[EmailNormalizer] PDF mapper completed and logged | messageId=${rawEmail.id}`);
+      }
+    } catch (pdfMapperError: any) {
+      console.warn(`[EmailNormalizer] PDF mapper error: ${pdfMapperError.message} - falling back to mapper service`);
+    }
+
+    if (!structuredBookingData) {
+      try {
+        console.log(`[EmailNormalizer] Calling fallback mapper service for messageId=${rawEmail.id}`);
+        const mapperService = new MapperService();
+        const mappedData = await mapperService.mapEmail({
+          subject: normalized.subject,
+          cleanedHtmlBody: normalized.cleanedHtmlBody,
+          cleanedTextBody: normalized.cleanedTextBody,
+          provider: normalized.from?.split('@')[1]?.split('>')[0] || 'unknown',
+          bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
+        });
+
+        const mappedFileName = `mapped_${rawEmail.id}.json`;
+        logMappedEmail(mappedFileName, mappedData);
+        structuredBookingData = mappedData;
+        console.log(`[EmailNormalizer] Fallback mapping completed and logged | messageId=${rawEmail.id}`);
+      } catch (mapperError: any) {
+        console.warn(`[EmailNormalizer] Fallback mapper service error: ${mapperError.message} - continuing without mapping`);
+      }
     }
   } else {
     console.log(
@@ -398,6 +476,7 @@ export const processGmailEmail = async (
   return {
     bookingType: bookingMeta.bookingType,
     provider: bookingMeta.provider,
+    structuredBookingData,
     ...normalized,
     pdfData
   };

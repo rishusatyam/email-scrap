@@ -58,7 +58,7 @@ export class MapperController {
       return 'Booking type is required';
     }
 
-    const validBookingTypes = ['bus', 'flight', 'hotel', 'car', 'rail'];
+    const validBookingTypes = ['bus', 'flight', 'hotel', 'car', 'rail', 'train'];
     if (!validBookingTypes.includes(request.bookingType)) {
       return `Invalid booking type. Must be one of: ${validBookingTypes.join(', ')}`;
     }

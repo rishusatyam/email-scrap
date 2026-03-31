@@ -10,3 +10,13 @@ export interface MapPdfResult {
   data?: Record<string, any>;
   error?: string;
 }
+
+/**
+ * Represents a single PDF file with metadata
+ */
+export interface PdfFileData {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+  size: number;
+}

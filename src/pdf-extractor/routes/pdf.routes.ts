@@ -5,7 +5,7 @@ export const pdfRoutes = Router();
 
 /**
  * POST /pdf/extract
- * Extract PDF attachment from Gmail and convert to text
+ * Extract raw PDF attachment from Gmail
  * 
  * Body:
  * {
@@ -17,7 +17,7 @@ export const pdfRoutes = Router();
  * Response:
  * {
  *   success: boolean
- *   text?: string (extracted PDF text)
+ *   file?: { originalname: string; mimetype: string; size: number }
  *   debugPath?: string (path where debug PDF was saved)
  *   error?: string (error message if failed)
  * }

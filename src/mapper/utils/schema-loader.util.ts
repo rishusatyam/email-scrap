@@ -3,12 +3,13 @@ import * as path from 'path';
 
 export class SchemaLoaderUtil {
   static async loadSchema(bookingType: string): Promise<Record<string, any>> {
+    const normalizedBookingType = bookingType === 'train' ? 'rail' : bookingType;
     const schemaPath = path.join(
       __dirname,
       '..',
       '..',
       'schemas',
-      `${bookingType}-segment.v1.json`
+      `${normalizedBookingType}-segment.v1.json`
     );
 
     const schemaContent = await fs.readFile(schemaPath, 'utf-8');

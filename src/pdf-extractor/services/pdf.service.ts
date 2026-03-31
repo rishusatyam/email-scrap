@@ -1,16 +1,21 @@
 import axios from 'axios';
-import pdf from 'pdf-parse';
 import fs from 'fs';
 import path from 'path';
+import { PdfFileData } from '../../pdfmapper/types';
 
 interface ExtractPdfResponse {
   success: boolean;
-  text?: string;
+  file?: PdfFileData;
   debugPath?: string;
   error?: string;
 }
 
-const parsePdfBuffer = async (pdfBuffer: Buffer, debugFilePrefix: string): Promise<ExtractPdfResponse> => {
+const preparePdfBuffer = async (
+  pdfBuffer: Buffer,
+  debugFilePrefix: string,
+  originalname: string,
+  mimetype: string
+): Promise<ExtractPdfResponse> => {
   // Save PDF for debugging
   const debugDir = path.join(__dirname, '../logs');
   if (!fs.existsSync(debugDir)) {
@@ -23,25 +28,24 @@ const parsePdfBuffer = async (pdfBuffer: Buffer, debugFilePrefix: string): Promi
   fs.writeFileSync(debugPdfPath, pdfBuffer);
   console.log(`Debug PDF saved: ${debugPdfPath}`);
 
-  console.log(`Parsing PDF to extract text...`);
-  const parsed = await pdf(pdfBuffer);
-  const pdfText = parsed.text;
-
-  console.log(`PDF parsed successfully (${pdfText.length} characters extracted)`);
-
   return {
     success: true,
-    text: pdfText,
+    file: {
+      buffer: pdfBuffer,
+      mimetype,
+      originalname,
+      size: pdfBuffer.length,
+    },
     debugPath: debugPdfPath,
   };
 };
 
 /**
- * Extract PDF from Gmail attachment and convert to text
+ * Extract raw PDF from Gmail attachment
  * @param messageId - Gmail message ID
  * @param attachmentId - Gmail attachment ID
  * @param accessToken - Gmail API access token
- * @returns Extracted text and debug path
+ * @returns Raw PDF buffer and debug path
  */
 export const extractPdfFromGmail = async (
   messageId: string,
@@ -83,8 +87,13 @@ export const extractPdfFromGmail = async (
     const pdfBuffer = Buffer.from(base64Data, 'base64');
     console.log(`Buffer created (${pdfBuffer.length} bytes)`);
 
-    // STEP 4: Convert PDF → Text
-    return await parsePdfBuffer(pdfBuffer, `pdf_gmail_${messageId}`);
+    // STEP 4: Return raw PDF buffer
+    return await preparePdfBuffer(
+      pdfBuffer,
+      `pdf_gmail_${messageId}`,
+      `${attachmentId}.pdf`,
+      'application/pdf'
+    );
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -98,11 +107,11 @@ export const extractPdfFromGmail = async (
 };
 
 /**
- * Extract PDF from Outlook attachment and convert to text
+ * Extract raw PDF from Outlook attachment
  * @param messageId - Outlook message ID
  * @param attachmentId - Outlook attachment ID
  * @param accessToken - Microsoft Graph API access token
- * @returns Extracted text and debug path
+ * @returns Raw PDF buffer and debug path
  */
 export const extractPdfFromOutlook = async (
   messageId: string,
@@ -141,7 +150,12 @@ export const extractPdfFromOutlook = async (
     const pdfBuffer = Buffer.from(contentBytes, 'base64');
     console.log(`Outlook PDF buffer created (${pdfBuffer.length} bytes)`);
 
-    return await parsePdfBuffer(pdfBuffer, `pdf_outlook_${messageId}`);
+    return await preparePdfBuffer(
+      pdfBuffer,
+      `pdf_outlook_${messageId}`,
+      `${attachmentId}.pdf`,
+      response.data?.contentType || 'application/pdf'
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`Outlook PDF extraction failed: ${errorMessage}`);

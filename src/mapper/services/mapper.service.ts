@@ -18,12 +18,13 @@ export class MapperService {
 
   async mapEmail(request: MapEmailRequest): Promise<Record<string, any>> {
     const body = this.selectBody(request);
+    const normalizedBookingType = this.normalizeBookingType(request.bookingType);
 
     if (!body) {
       throw new Error('No email body provided');
     }
 
-    const schema = await SchemaLoaderUtil.loadSchema(request.bookingType);
+    const schema = await SchemaLoaderUtil.loadSchema(normalizedBookingType);
 
     // Testing mode: force each run to use a unique provider key.
     const provider = this.getRandomizedProvider(request.provider);
@@ -34,7 +35,7 @@ export class MapperService {
     let template: string;
     if (!templateData) {
       console.log(`[Mapper] No template found for provider: ${provider}. Calling LLM...`);
-      const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, request.bookingType);
+      const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, normalizedBookingType);
       template = generatedTemplate.template;
       
       // Extract hashTable from generated template
@@ -67,7 +68,7 @@ export class MapperService {
         console.log('[Validation] ✗ Extraction rate <80% - Email format has changed');
         console.log('[Mapper] Regenerating template...');
         
-        const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, request.bookingType);
+        const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, normalizedBookingType);
         template = generatedTemplate.template;
         
         const newHashTable = HashContextUtil.extractHashTable(template);
@@ -80,7 +81,7 @@ export class MapperService {
         console.log('[Mapper] Extracted values with new template:');
         console.log(JSON.stringify(newExtractedValues, null, 2));
         
-        return this.finalizeMappedResult(newExtractedValues, body, request.bookingType, schema);
+        return this.finalizeMappedResult(newExtractedValues, body, normalizedBookingType, schema);
       }
       
       // Extraction rate ≥80% - proceed to word validation
@@ -134,7 +135,7 @@ export class MapperService {
           console.log('[Mapper] Regenerating template...');
           
           // Call LLM to regenerate template
-          const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, request.bookingType);
+          const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, normalizedBookingType);
           template = generatedTemplate.template;
           
           // Extract new hashTable
@@ -151,7 +152,7 @@ export class MapperService {
           console.log(JSON.stringify(newExtractedValues, null, 2));
           
           // Use new extracted values
-          return this.finalizeMappedResult(newExtractedValues, body, request.bookingType, schema);
+          return this.finalizeMappedResult(newExtractedValues, body, normalizedBookingType, schema);
         } else {
           console.log('[Validation] ✓ Word match rate ≥90% - Template is valid');
         }
@@ -160,7 +161,11 @@ export class MapperService {
     console.log('');
 
     // Step 3: Build nested object from flat extracted values
-    return this.finalizeMappedResult(extractedValues, body, request.bookingType, schema);
+    return this.finalizeMappedResult(extractedValues, body, normalizedBookingType, schema);
+  }
+
+  private normalizeBookingType(bookingType: MapEmailRequest['bookingType']): 'bus' | 'flight' | 'hotel' | 'car' | 'rail' {
+    return bookingType === 'train' ? 'rail' : bookingType;
   }
 
   private finalizeMappedResult(
