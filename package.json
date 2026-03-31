@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",
+    "@types/multer": "^2.1.0",
     "axios": "^1.13.6",
     "bullmq": "^5.70.1",
     "cheerio": "^1.0.0-rc.12",
@@ -21,6 +22,7 @@
     "html-table-to-json": "^1.0.0",
     "html-to-text": "^9.0.5",
     "ioredis": "^5.10.0",
+    "multer": "^2.1.1",
     "openai": "^6.27.0",
     "pdf-parse": "^1.1.1",
     "sanitize-html": "^2.17.2"

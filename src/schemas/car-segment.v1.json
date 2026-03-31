@@ -20,12 +20,12 @@
       "default": "car"
     },
     "bookingReference": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Car rental confirmation number"
     },
     "status": {
-      "type": "string",
-      "enum": ["confirmed", "pending", "cancelled", "completed"],
+      "type": ["string", "null"],
+      "enum": ["confirmed", "pending", "cancelled", "completed", null],
       "default": "confirmed"
     },
     "rentalCompany": {
@@ -35,16 +35,16 @@
           "type": "string"
         },
         "code": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "contactInfo": {
           "type": "object",
           "properties": {
             "phone": {
-              "type": "string"
+              "type": ["string", "null"]
             },
             "email": {
-              "type": "string",
+              "type": ["string", "null"], 
               "format": "email"
             }
           }
@@ -60,24 +60,24 @@
           "enum": ["economy", "compact", "midsize", "fullsize", "suv", "luxury", "van"]
         },
         "make": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "model": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "transmission": {
-          "type": "string",
-          "enum": ["automatic", "manual"]
+          "type": ["string", "null"],
+          "enum": ["automatic", "manual", null]
         },
         "fuelType": {
-          "type": "string",
-          "enum": ["petrol", "diesel", "electric", "hybrid"]
+          "type": ["string", "null"],
+          "enum": ["petrol", "diesel", "electric", "hybrid", null]
         },
         "passengerCapacity": {
-          "type": "integer"
+          "type": ["integer", "null"]
         },
         "luggageCapacity": {
-          "type": "integer"
+          "type": ["integer", "null"]
         }
       }
     },
@@ -88,7 +88,7 @@
           "type": "string"
         },
         "address": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "dateTime": {
           "type": "string",
@@ -115,8 +115,8 @@
           "format": "date-time"
         },
         "locationType": {
-          "type": "string",
-          "enum": ["airport", "city", "hotel", "station"]
+          "type": ["string", "null"],
+          "enum": ["airport", "city", "hotel", "station", null]
         }
       },
       "required": ["location", "dateTime"]
@@ -125,13 +125,13 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "licenseNumber": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "age": {
-          "type": "integer"
+          "type": ["integer", "null"]
         }
       }
     },
@@ -139,22 +139,22 @@
       "type": "object",
       "properties": {
         "totalAmount": {
-          "type": "number"
+          "type": ["number", "null"]
         },
         "currency": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "dailyRate": {
-          "type": "number"
+          "type": ["number", "null"]
         },
         "numberOfDays": {
-          "type": "integer"
+          "type": ["integer", "null"]
         },
         "taxes": {
-          "type": "number"
+          "type": ["number", "null"]
         },
         "fees": {
-          "type": "number"
+          "type": ["number", "null"]
         }
       }
     },
@@ -168,7 +168,7 @@
           }
         },
         "cost": {
-          "type": "number"
+          "type": ["number", "null"]
         }
       }
     },
@@ -181,7 +181,7 @@
             "type": "string"
           },
           "cost": {
-            "type": "number"
+            "type": ["number", "null"]
           }
         }
       },
@@ -205,14 +205,6 @@
         }
       },
       "additionalProperties": true
-    },
-    "createdAt": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "updatedAt": {
-      "type": "string",
-      "format": "date-time"
     }
   },
   "additionalProperties": false

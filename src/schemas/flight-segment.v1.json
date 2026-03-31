@@ -5,14 +5,10 @@
   "description": "Flight booking with complete travel details",
   "type": "object",
   "required": ["bookingId", "bookingType", "profile_id"],
-  "properties": {
-    "profile_id": {
-      "type": "string",
-      "description": "Profile ID this segment belongs to"
-    },
+ 
+   "properties": {
     "bookingId": {
-      "type": "string",
-      "description": "Unique identifier for the flight booking"
+      "type": "string"
     },
     "bookingType": {
       "type": "string",
@@ -20,136 +16,159 @@
       "default": "flight"
     },
     "bookingReference": {
-      "type": "string",
-      "description": "Booking confirmation number (PNR)"
+      "type": ["string", "null"]
     },
     "status": {
       "type": "string",
-      "enum": ["confirmed", "pending", "cancelled", "completed"],
-      "default": "confirmed"
+      "enum": ["confirmed", "pending", "cancelled", "completed"]
     },
-    "flight": {
-      "type": "object",
-      "properties": {
-        "airline": {
-          "type": "string",
-          "description": "Airline name"
-        },
-        "airlineCode": {
-          "type": "string",
-          "description": "IATA airline code"
-        },
-        "flightNumber": {
-          "type": "string"
-        },
-        "operatingAirline": {
-          "type": "string",
-          "description": "Operating carrier if codeshare"
-        }
-      },
-      "required": ["airline", "airlineCode", "flightNumber"]
+    "profile_id": {
+      "type": "string"
     },
-    "departure": {
-      "type": "object",
-      "properties": {
-        "airport": {
-          "type": "string",
-          "description": "Airport name"
+
+    "passengers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "ticketNumber": {
+            "type": ["string", "null"]
+          },
+          "seatNumber": {
+            "type": ["string", "null"]
+          },
+          "cabin": {
+            "type": ["string", "null"],
+            "enum": ["economy", "premium_economy", "business", "first", null]
+          },
+          "boardingGroup": {
+            "type": ["string", "null"]
+          }
         },
-        "airportCode": {
-          "type": "string",
-          "description": "IATA airport code"
-        },
-        "terminal": {
-          "type": "string"
-        },
-        "gate": {
-          "type": "string"
-        },
-        "scheduledTime": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "actualTime": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": ["airport", "airportCode", "scheduledTime"]
-    },
-    "arrival": {
-      "type": "object",
-      "properties": {
-        "airport": {
-          "type": "string",
-          "description": "Airport name"
-        },
-        "airportCode": {
-          "type": "string",
-          "description": "IATA airport code"
-        },
-        "terminal": {
-          "type": "string"
-        },
-        "gate": {
-          "type": "string"
-        },
-        "scheduledTime": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "actualTime": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": ["airport", "airportCode", "scheduledTime"]
-    },
-    "passenger": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "ticketNumber": {
-          "type": "string"
-        },
-        "seatNumber": {
-          "type": "string"
-        },
-        "cabin": {
-          "type": "string",
-          "enum": ["economy", "premium_economy", "business", "first"]
-        },
-        "boardingGroup": {
-          "type": "string"
-        }
+        "additionalProperties": false
       }
     },
+
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["segmentId", "airline", "airlineCode", "flightNumber", "departure", "arrival"],
+        "properties": {
+          "segmentId": {
+            "type": "string"
+          },
+          "airline": {
+            "type": "string"
+          },
+          "airlineCode": {
+            "type": "string"
+          },
+          "flightNumber": {
+            "type": "string"
+          },
+          "operatingAirline": {
+            "type": ["string", "null"]
+          },
+
+          "departure": {
+            "type": "object",
+            "required": ["airport", "airportCode", "scheduledTime"],
+            "properties": {
+              "airport": {
+                "type": "string"
+              },
+              "airportCode": {
+                "type": "string"
+              },
+              "terminal": {
+                "type": ["string", "null"]
+              },
+              "gate": {
+                "type": ["string", "null"]
+              },
+              "scheduledTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "actualTime": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          },
+
+          "arrival": {
+            "type": "object",
+            "required": ["airport", "airportCode", "scheduledTime"],
+            "properties": {
+              "airport": {
+                "type": "string"
+              },
+              "airportCode": {
+                "type": "string"
+              },
+              "terminal": {
+                "type": ["string", "null"]
+              },
+              "gate": {
+                "type": ["string", "null"]
+              },
+              "scheduledTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "actualTime": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          },
+
+          "duration": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": ["string", "null"],
+            "enum": ["scheduled", "delayed", "departed", "arrived", "cancelled", null]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
     "fare": {
       "type": "object",
       "properties": {
         "amount": {
-          "type": "number"
+          "type": ["number", "null"]
         },
         "currency": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "fareClass": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "fareType": {
-          "type": "string",
-          "enum": ["economy", "business", "first", "premium_economy"]
+          "type": ["string", "null"],
+          "enum": ["economy", "business", "first", "premium_economy", null]
         },
         "taxes": {
-          "type": "number"
+          "type": ["number", "null"]
         },
         "fees": {
-          "type": "number"
+          "type": ["number", "null"]
         }
-      }
+      },
+      "additionalProperties": false
     },
+
     "baggage": {
       "type": "object",
       "properties": {
@@ -157,39 +176,41 @@
           "type": "object",
           "properties": {
             "allowance": {
-              "type": "integer",
-              "description": "Number of bags"
+              "type": ["number", "null"]
             },
             "weight": {
-              "type": "integer",
-              "description": "Weight limit in kg"
+              "type": ["number", "null"]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "cabin": {
           "type": "object",
           "properties": {
             "allowance": {
-              "type": "integer"
+              "type": ["number", "null"]
             },
             "dimensions": {
-              "type": "string"
+              "type": ["string", "null"]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
+
     "services": {
       "type": "object",
       "properties": {
         "meal": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "entertainment": {
-          "type": "boolean"
+          "type": ["boolean", "null"]
         },
         "wifi": {
-          "type": "boolean"
+          "type": ["boolean", "null"]
         },
         "specialRequests": {
           "type": "array",
@@ -197,17 +218,18 @@
             "type": "string"
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
+
     "metadata": {
       "type": "object",
       "properties": {
         "source": {
-          "type": "string",
-          "description": "Booking source (GDS, OBT, direct)"
+          "type": ["string", "null"]
         },
         "bookingDate": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "date-time"
         },
         "tags": {
@@ -218,15 +240,8 @@
         }
       },
       "additionalProperties": true
-    },
-    "createdAt": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "updatedAt": {
-      "type": "string",
-      "format": "date-time"
     }
   },
   "additionalProperties": false
 }
+

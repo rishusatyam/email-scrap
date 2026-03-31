@@ -7,152 +7,159 @@
   "required": ["bookingId", "bookingType", "train", "departure", "arrival", "profile_id"],
   "properties": {
     "profile_id": {
-      "type": "string",
-      "description": "Profile ID this segment belongs to"
+      "type": "string"
     },
+
     "bookingId": {
-      "type": "string",
-      "description": "Unique identifier for the rail booking"
+      "type": "string"
     },
+
     "bookingType": {
       "type": "string",
       "enum": ["rail"],
       "default": "rail"
     },
+
     "bookingReference": {
-      "type": "string",
-      "description": "Rail booking confirmation number"
+      "type": ["string", "null"]
     },
+
     "status": {
       "type": "string",
-      "enum": ["confirmed", "pending", "cancelled", "completed"],
-      "default": "confirmed"
+      "enum": ["confirmed", "pending", "cancelled", "completed"]
     },
+
     "train": {
       "type": "object",
+      "required": ["operator", "trainNumber"],
       "properties": {
         "operator": {
-          "type": "string",
-          "description": "Rail operator name"
+          "type": "string"
         },
         "trainNumber": {
           "type": "string"
         },
         "trainName": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "trainType": {
-          "type": "string",
-          "enum": ["high_speed", "intercity", "regional", "metro", "other"]
+          "type": ["string", "null"],
+          "enum": ["high_speed", "intercity", "regional", "metro", "other", null]
         }
       },
-      "required": ["operator", "trainNumber"]
+      "additionalProperties": false
     },
+
     "departure": {
       "type": "object",
+      "required": ["station", "scheduledTime"],
       "properties": {
         "station": {
-          "type": "string",
-          "description": "Station name"
+          "type": "string"
         },
         "stationCode": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "platform": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "scheduledTime": {
           "type": "string",
           "format": "date-time"
         },
         "actualTime": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "date-time"
         }
       },
-      "required": ["station", "scheduledTime"]
+      "additionalProperties": false
     },
+
     "arrival": {
       "type": "object",
+      "required": ["station", "scheduledTime"],
       "properties": {
         "station": {
-          "type": "string",
-          "description": "Station name"
+          "type": "string"
         },
         "stationCode": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "platform": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "scheduledTime": {
           "type": "string",
           "format": "date-time"
         },
         "actualTime": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "date-time"
         }
       },
-      "required": ["station", "scheduledTime"]
+      "additionalProperties": false
     },
+
     "passengers": {
       "type": "array",
       "items": {
         "type": "object",
+        "required": ["name"],
         "properties": {
           "name": {
             "type": "string"
           },
           "ticketNumber": {
-            "type": "string"
+            "type": ["string", "null"]
           },
           "seatNumber": {
-            "type": "string"
+            "type": ["string", "null"]
           },
           "coach": {
-            "type": "string"
+            "type": ["string", "null"]
           },
           "class": {
-            "type": "string",
-            "description": "Seat class (economy, first, business, sleeper, or custom value)"
+            "type": ["string", "null"]
           },
           "seatType": {
-            "type": "string",
-            "description": "Seat type (window, aisle, table, or custom value)"
+            "type": ["string", "null"]
           }
-        }
+        },
+        "additionalProperties": false
       }
     },
+
     "fare": {
       "type": "object",
       "properties": {
         "amount": {
-          "type": "number"
+          "type": ["number", "null"]
         },
         "currency": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "fareClass": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "fareType": {
-          "type": "string",
-          "enum": ["standard", "flexible", "saver", "business"]
+          "type": ["string", "null"],
+          "enum": ["standard", "flexible", "saver", "business", null]
         }
-      }
+      },
+      "additionalProperties": false
     },
+
     "services": {
       "type": "object",
       "properties": {
         "wifi": {
-          "type": "boolean"
+          "type": ["boolean", "null"]
         },
         "meals": {
-          "type": "boolean"
+          "type": ["boolean", "null"]
         },
         "powerOutlet": {
-          "type": "boolean"
+          "type": ["boolean", "null"]
         },
         "specialRequests": {
           "type": "array",
@@ -160,16 +167,18 @@
             "type": "string"
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
+
     "metadata": {
       "type": "object",
       "properties": {
         "source": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "bookingDate": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "date-time"
         },
         "tags": {
@@ -180,14 +189,6 @@
         }
       },
       "additionalProperties": true
-    },
-    "createdAt": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "updatedAt": {
-      "type": "string",
-      "format": "date-time"
     }
   },
   "additionalProperties": false
