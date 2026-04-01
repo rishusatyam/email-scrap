@@ -27,8 +27,7 @@ export class MapperService {
 
     const schema = await SchemaLoaderUtil.loadSchema(normalizedBookingType);
 
-    // Testing mode: force each run to use a unique provider key.
-    const provider = this.getRandomizedProvider(request.provider);
+    const provider = request.provider;
 
     // Step 1: Get or generate template
     const templateData = await this.templateRuleDAO.findByProvider(provider);
@@ -248,7 +247,7 @@ export class MapperService {
     const fileName = this.buildMappedLogFileName(bookingType, provider);
     void logMappedEmail(fileName, {
       timestamp: new Date().toISOString(),
-      mapper: 'simple-mapper',
+      mapper: 'htmltext-mapper',
       bookingType,
       provider,
       data: finalData,
@@ -277,12 +276,5 @@ export class MapperService {
     }
 
     return null;
-  }
-
-  private getRandomizedProvider(baseProvider: string): string {
-    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    const randomizedProvider = `${baseProvider}-test-${suffix}`;
-    console.log(`[Mapper] Testing mode provider override: ${baseProvider} -> ${randomizedProvider}`);
-    return randomizedProvider;
   }
 }

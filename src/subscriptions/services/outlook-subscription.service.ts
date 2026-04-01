@@ -25,8 +25,9 @@ export const createOutlookSubscription = async (mailbox: Mailbox): Promise<Outlo
   // Generate a secret clientState — stored in DB and validated on every incoming notification
   const clientState = randomUUID();
 
-  // Outlook requires expiration as ISO string; use 1 hour for local testing
-  const expirationDateTime = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  // Read subscription duration from environment, default to 60 minutes
+  const durationMinutes = Number(process.env.OUTLOOK_SUB_DURATION_MINUTES) || 60;
+  const expirationDateTime = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
 
   console.log(`[OutlookSub] Requesting subscription with expirationDateTime=${expirationDateTime}`);
 
