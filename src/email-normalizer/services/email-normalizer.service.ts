@@ -9,7 +9,6 @@ import { extractPdfFromGmail, extractPdfFromOutlook } from '../../pdf-extractor/
 import { MapperService } from '../../mapper/services/mapper.service';
 import { PdfMapperService } from '../../pdfmapper/services/pdf-mapper.service';
 import { PdfBookingType, PdfFileData } from '../../pdfmapper/types';
-import { logMappedEmail } from '../../mapper/utils/mapper-logger';
 import { validateStrictBooking } from '../../classification/strictvalidator';
 import { logNormalizedEmail } from '../utils/normalizer-logger';
 
@@ -307,25 +306,29 @@ export const processOutlookEmail = async (
       `[EmailNormalizer] Strict validator passed for Outlook messageId=${rawEmail.id} | reason=${strictValidation.reason}`
     );
 
-    try {
-      structuredBookingData = await mapAllowedEmailWithPdfMapper(
-        pdfData,
-        bookingMeta.bookingType,
-        bookingMeta.provider
-      );
-
-      if (structuredBookingData) {
-        const mappedFileName = `mapped_pdf_${rawEmail.id}.json`;
-        logMappedEmail(mappedFileName, structuredBookingData);
-        console.log(`[EmailNormalizer] Outlook PDF mapper completed and logged | messageId=${rawEmail.id}`);
-      }
-    } catch (pdfMapperError: any) {
-      console.warn(`[EmailNormalizer] Outlook PDF mapper error: ${pdfMapperError.message} - falling back to mapper service`);
-    }
-
-    if (!structuredBookingData) {
+    // Clean binary split: PDF path vs Text path (mutually exclusive)
+    if (pdfData && pdfData.files && pdfData.files.length > 0) {
+      // PDF path: Use PDF mapper only
       try {
-        console.log(`[EmailNormalizer] Calling fallback mapper service for Outlook messageId=${rawEmail.id}`);
+        console.log(`[EmailNormalizer] PDF files detected, using PDF mapper for Outlook messageId=${rawEmail.id}`);
+        structuredBookingData = await mapAllowedEmailWithPdfMapper(
+          pdfData,
+          bookingMeta.bookingType,
+          bookingMeta.provider
+        );
+
+        if (structuredBookingData) {
+          console.log(`[EmailNormalizer] Outlook PDF mapper completed | messageId=${rawEmail.id}`);
+        } else {
+          console.warn(`[EmailNormalizer] Outlook PDF mapper returned no data for messageId=${rawEmail.id}`);
+        }
+      } catch (pdfMapperError: any) {
+        console.error(`[EmailNormalizer] Outlook PDF mapper error for messageId=${rawEmail.id}: ${pdfMapperError.message}`);
+      }
+    } else {
+      // Text path: Use text mapper only (no PDF files)
+      try {
+        console.log(`[EmailNormalizer] No PDF files detected, using text mapper for Outlook messageId=${rawEmail.id}`);
         const mapperService = new MapperService();
         const mappedData = await mapperService.mapEmail({
           subject: normalized.subject,
@@ -335,12 +338,10 @@ export const processOutlookEmail = async (
           bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
         });
 
-        const mappedFileName = `mapped_${rawEmail.id}.json`;
-        logMappedEmail(mappedFileName, mappedData);
         structuredBookingData = mappedData;
-        console.log(`[EmailNormalizer] Outlook fallback mapping completed and logged | messageId=${rawEmail.id}`);
+        console.log(`[EmailNormalizer] Outlook text mapper completed | messageId=${rawEmail.id}`);
       } catch (mapperError: any) {
-        console.warn(`[EmailNormalizer] Outlook fallback mapper error: ${mapperError.message} - continuing without mapping`);
+        console.error(`[EmailNormalizer] Outlook text mapper error for messageId=${rawEmail.id}: ${mapperError.message}`);
       }
     }
   } else {
@@ -431,25 +432,29 @@ export const processGmailEmail = async (
       `[EmailNormalizer] Strict validator passed for messageId=${rawEmail.id} | reason=${strictValidation.reason}`
     );
 
-    try {
-      structuredBookingData = await mapAllowedEmailWithPdfMapper(
-        pdfData,
-        bookingMeta.bookingType,
-        bookingMeta.provider
-      );
-
-      if (structuredBookingData) {
-        const mappedFileName = `mapped_pdf_${rawEmail.id}.json`;
-        logMappedEmail(mappedFileName, structuredBookingData);
-        console.log(`[EmailNormalizer] PDF mapper completed and logged | messageId=${rawEmail.id}`);
-      }
-    } catch (pdfMapperError: any) {
-      console.warn(`[EmailNormalizer] PDF mapper error: ${pdfMapperError.message} - falling back to mapper service`);
-    }
-
-    if (!structuredBookingData) {
+    // Clean binary split: PDF path vs Text path (mutually exclusive)
+    if (pdfData && pdfData.files && pdfData.files.length > 0) {
+      // PDF path: Use PDF mapper only
       try {
-        console.log(`[EmailNormalizer] Calling fallback mapper service for messageId=${rawEmail.id}`);
+        console.log(`[EmailNormalizer] PDF files detected, using PDF mapper for messageId=${rawEmail.id}`);
+        structuredBookingData = await mapAllowedEmailWithPdfMapper(
+          pdfData,
+          bookingMeta.bookingType,
+          bookingMeta.provider
+        );
+
+        if (structuredBookingData) {
+          console.log(`[EmailNormalizer] PDF mapper completed | messageId=${rawEmail.id}`);
+        } else {
+          console.warn(`[EmailNormalizer] PDF mapper returned no data for messageId=${rawEmail.id}`);
+        }
+      } catch (pdfMapperError: any) {
+        console.error(`[EmailNormalizer] PDF mapper error for messageId=${rawEmail.id}: ${pdfMapperError.message}`);
+      }
+    } else {
+      // Text path: Use text mapper only (no PDF files)
+      try {
+        console.log(`[EmailNormalizer] No PDF files detected, using text mapper for messageId=${rawEmail.id}`);
         const mapperService = new MapperService();
         const mappedData = await mapperService.mapEmail({
           subject: normalized.subject,
@@ -459,12 +464,10 @@ export const processGmailEmail = async (
           bookingType: bookingMeta.bookingType as 'bus' | 'flight' | 'hotel' | 'car' | 'rail',
         });
 
-        const mappedFileName = `mapped_${rawEmail.id}.json`;
-        logMappedEmail(mappedFileName, mappedData);
         structuredBookingData = mappedData;
-        console.log(`[EmailNormalizer] Fallback mapping completed and logged | messageId=${rawEmail.id}`);
+        console.log(`[EmailNormalizer] Text mapper completed | messageId=${rawEmail.id}`);
       } catch (mapperError: any) {
-        console.warn(`[EmailNormalizer] Fallback mapper service error: ${mapperError.message} - continuing without mapping`);
+        console.error(`[EmailNormalizer] Text mapper error for messageId=${rawEmail.id}: ${mapperError.message}`);
       }
     }
   } else {

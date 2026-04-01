@@ -7,6 +7,7 @@ import { TypeConverterUtil } from '../utils/type-converter.util';
 import { DataCleanerUtil } from '../utils/data-cleaner.util';
 import { HashContextUtil } from '../utils/hash-context.util';
 import { BusPassengerExtractor, RailPassengerExtractor } from '../extractors';
+import { logMappedEmail } from '../utils/mapper-logger';
 export class MapperService {
   private llmService: LLMService;
   private templateRuleDAO: TemplateRuleDAO;
@@ -81,7 +82,7 @@ export class MapperService {
         console.log('[Mapper] Extracted values with new template:');
         console.log(JSON.stringify(newExtractedValues, null, 2));
         
-        return this.finalizeMappedResult(newExtractedValues, body, normalizedBookingType, schema);
+        return this.finalizeMappedResult(newExtractedValues, body, normalizedBookingType, schema, provider);
       }
       
       // Extraction rate ≥80% - proceed to word validation
@@ -152,7 +153,7 @@ export class MapperService {
           console.log(JSON.stringify(newExtractedValues, null, 2));
           
           // Use new extracted values
-          return this.finalizeMappedResult(newExtractedValues, body, normalizedBookingType, schema);
+          return this.finalizeMappedResult(newExtractedValues, body, normalizedBookingType, schema, provider);
         } else {
           console.log('[Validation] ✓ Word match rate ≥90% - Template is valid');
         }
@@ -161,7 +162,7 @@ export class MapperService {
     console.log('');
 
     // Step 3: Build nested object from flat extracted values
-    return this.finalizeMappedResult(extractedValues, body, normalizedBookingType, schema);
+    return this.finalizeMappedResult(extractedValues, body, normalizedBookingType, schema, provider);
   }
 
   private normalizeBookingType(bookingType: MapEmailRequest['bookingType']): 'bus' | 'flight' | 'hotel' | 'car' | 'rail' {
@@ -172,7 +173,8 @@ export class MapperService {
     extractedValues: Record<string, string | null>,
     body: string,
     bookingType: string,
-    schema: Record<string, any>
+    schema: Record<string, any>,
+    provider: string
   ): Record<string, any> {
     const nextExtractedValues = { ...extractedValues };
     let passengers: Array<{
@@ -240,7 +242,27 @@ export class MapperService {
     const typedData = TypeConverterUtil.applyTypeConversion(cleanedData, schema);
 
     // Step 6: Fill missing required fields with defaults
-    return SchemaLoaderUtil.fillMissingFields(typedData, schema);
+    const finalData = SchemaLoaderUtil.fillMissingFields(typedData, schema);
+
+    // Fire-and-forget logging; never block mapper response path
+    const fileName = this.buildMappedLogFileName(bookingType, provider);
+    void logMappedEmail(fileName, {
+      timestamp: new Date().toISOString(),
+      mapper: 'simple-mapper',
+      bookingType,
+      provider,
+      data: finalData,
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[Mapper] Failed to persist mapped log: ${message}`);
+    });
+
+    return finalData;
+  }
+
+  private buildMappedLogFileName(bookingType: string, provider: string): string {
+    const safeProvider = provider.toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 80);
+    return `mapped_${bookingType}_${safeProvider}_${Date.now()}.json`;
   }
 
   private selectBody(request: MapEmailRequest): string | null {
