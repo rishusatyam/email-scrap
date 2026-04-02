@@ -265,6 +265,20 @@ export class TemplateMatcherUtil {
       return match ? match[0].trim() : result;
     }
 
+    if (fieldName.endsWith('currency')) {
+      // Remove all numbers and keep only currency symbol
+      let cleaned = result.replace(/\d+(\.\d+)?/g, '').trim();
+      // Match currency symbols and codes: Rs, ₹, INR, USD, EUR, GBP, etc.
+      const match = cleaned.match(/^(Rs\.?|₹|INR|USD|EUR|GBP|JPY|\$|€|£|¥)/i);
+      return match ? match[1] : null;
+    }
+
+    if (fieldName.endsWith('amount') || fieldName.endsWith('Amount')) {
+      // Extract numeric amount - allows commas like 1,569.95 or 10,001.50
+      const match = result.match(/([\d,]+(?:\.\d{2})?)/);
+      return match ? match[1] : null;
+    }
+
     if (fieldName.endsWith('terminal')) {
       const match = result.match(/\b\d+[A-Za-z]?\b/);
       return match ? match[0] : result;

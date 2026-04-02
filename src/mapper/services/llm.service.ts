@@ -26,12 +26,13 @@ export class LLMService {
     schema: Record<string, any>,
     provider: string,
     bookingType: string
-  ): Promise<{ provider: string; template: string }> {
+  ): Promise<{ provider: string; variant: string; template: string }> {
     const prompt = this.buildPrompt(body, schema, provider, bookingType);
     const response = await this.callLLMAPI(prompt);
 
     return {
       provider,
+      variant: response.variant, // NEW: Return variant classification
       template: response.template,
     };
   }
@@ -41,7 +42,55 @@ export class LLMService {
     const promptTemplate = PromptFactory.getPrompt(bookingType);
     const schemaFields = this.formatSchemaFields(schema);
     
-    return promptTemplate.getPrompt(schemaFields, body);
+    // Generate booking-type-aware variant classification instruction
+    const variantInstruction = this.buildVariantInstruction(bookingType);
+    
+    return promptTemplate.getPrompt(schemaFields, body) + variantInstruction;
+  }
+
+  /**
+   * Generate variant classification instruction based on booking type
+   * All booking types use 6 variants: single_direct, multi_direct, single_roundtrip, multi_roundtrip, single_connecting, multi_connecting
+   */
+  private buildVariantInstruction(bookingType: string): string {
+    const segmentType = this.getSegmentTerminology(bookingType);
+    
+    return `
+IMPORTANT: First, classify this booking variant based on BOTH passenger count AND ${segmentType} structure:
+
+PASSENGER COUNT: Count all passengers (check for multiple names/IDs)
+${segmentType.toUpperCase()} STRUCTURE:
+  - Direct: Only 1 ${segmentType}
+  - Roundtrip: 2 ${segmentType}s (outbound + return, same route reversed)
+  - Connecting: 2+ ${segmentType}s with connection/layover (different routes)
+
+VARIANT CLASSIFICATION (Passenger Count + ${segmentType} Type):
+1. "single_direct" - 1 passenger, 1 ${segmentType}
+2. "multi_direct" - 2+ passengers, 1 ${segmentType}
+3. "single_roundtrip" - 1 passenger, outbound + return ${segmentType}s
+4. "multi_roundtrip" - 2+ passengers, outbound + return ${segmentType}s
+5. "single_connecting" - 1 passenger, 2+ ${segmentType}s with connection
+6. "multi_connecting" - 2+ passengers, 2+ ${segmentType}s with connection
+
+Return BOTH variant and template in your JSON response:
+{
+  "variant": "single_direct|multi_direct|single_roundtrip|multi_roundtrip|single_connecting|multi_connecting",
+  "template": "field1 = value1, field2 = value2, ..."
+}`;
+  }
+
+  /**
+   * Map booking type to segment/leg terminology
+   */
+  private getSegmentTerminology(bookingType: string): string {
+    const terminology: Record<string, string> = {
+      flight: 'flight',
+      bus: 'journey',
+      rail: 'journey',
+      car: 'rental',
+      hotel: 'stay',
+    };
+    return terminology[bookingType] || 'segment';
   }
 
   private formatSchemaFields(schema: Record<string, any>, prefix = ''): string {
@@ -79,8 +128,11 @@ export class LLMService {
         if (!parsed.template) {
           throw new Error('LLM response missing template field');
         }
+        if (!parsed.variant) {
+          throw new Error('LLM response missing variant field');
+        }
         
-        console.log('[LLM] Template generated successfully');
+        console.log(`[LLM] Template generated successfully (variant: ${parsed.variant})`);
         return parsed;
       } catch (error: any) {
         lastError = error;

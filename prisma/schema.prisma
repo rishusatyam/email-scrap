@@ -48,11 +48,13 @@ model Subscription {
 
 model EmailTemplateRule {
   id        String   @id @default(uuid())
-  provider  String   @unique
+  provider  String   // 'expedia', 'makemytrip', 'booking', etc
+  variant   String   // 'single', 'multi', 'roundtrip', 'connecting'
   rules     Json
   hashTable Json?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@unique([provider, variant])
   @@map("email_template_rules")
 }

@@ -8,13 +8,59 @@ import { DataCleanerUtil } from '../utils/data-cleaner.util';
 import { HashContextUtil } from '../utils/hash-context.util';
 import { BusPassengerExtractor, RailPassengerExtractor } from '../extractors';
 import { logMappedEmail } from '../utils/mapper-logger';
+
+/**
+ * VARIANT TAXONOMY (Passenger Count + Segment Type):
+ * 
+ * Passenger Count: 1 = "single", 2+ = "multi"
+ * Segment Type: "direct" (1), "roundtrip" (2 outbound+return), "connecting" (2+ with layover)
+ * 
+ * Valid Variants:
+ * - single_direct: 1 passenger, 1 flight segment
+ * - multi_direct: 2+ passengers, 1 flight segment
+ * - single_roundtrip: 1 passenger, outbound + return flights
+ * - multi_roundtrip: 2+ passengers, outbound + return flights
+ * - single_connecting: 1 passenger, 2+ segments with connection
+ * - multi_connecting: 2+ passengers, 2+ segments with connection
+ */
 export class MapperService {
   private llmService: LLMService;
   private templateRuleDAO: TemplateRuleDAO;
+  private readonly VALID_VARIANTS = [
+    'single_direct',
+    'multi_direct',
+    'single_roundtrip',
+    'multi_roundtrip',
+    'single_connecting',
+    'multi_connecting',
+  ];
 
   constructor() {
     this.llmService = new LLMService();
     this.templateRuleDAO = new TemplateRuleDAO();
+  }
+
+  /**
+   * Validate if variant is one of the 6 accepted types
+   */
+  private isValidVariant(variant: string): boolean {
+    return this.VALID_VARIANTS.includes(variant);
+  }
+
+  private calculateExtractionScore(
+    extractedValues: Record<string, string | null>,
+    hashTable: Record<string, unknown> | null
+  ): number {
+    const totalFields = hashTable && Object.keys(hashTable).length > 0
+      ? Object.keys(hashTable).length
+      : Object.keys(extractedValues).length;
+
+    if (totalFields === 0) {
+      return 0;
+    }
+
+    const extractedFields = Object.values(extractedValues).filter((value) => value !== null && value !== '').length;
+    return (extractedFields / totalFields) * 100;
   }
 
   async mapEmail(request: MapEmailRequest): Promise<Record<string, any>> {
@@ -27,33 +73,95 @@ export class MapperService {
 
     const schema = await SchemaLoaderUtil.loadSchema(normalizedBookingType);
 
-    const provider = request.provider;
+    let provider = request.provider;
 
-    // Step 1: Get or generate template
-    const templateData = await this.templateRuleDAO.findByProvider(provider);
+    // Sanitize provider name for testing purposes - if it looks random/scrambled, treat as unknown
+    provider = this.sanitizeProviderName(provider);
+
+    // Step 1: Compete all templates for this provider and select the best by extraction score
+    const providerTemplates = await this.templateRuleDAO.findAllByProvider(provider);
 
     let template: string;
-    if (!templateData) {
-      console.log(`[Mapper] No template found for provider: ${provider}. Calling LLM...`);
+    let variant = 'unknown';
+    let extractedValues: Record<string, string | null> = {};
+    let selectedScore = 0;
+
+    if (providerTemplates.length > 0) {
+      console.log(`[Mapper] Found ${providerTemplates.length} cached templates for provider: ${provider}`);
+
+      let bestTemplate = providerTemplates[0];
+      let bestExtractedValues: Record<string, string | null> = {};
+      let bestScore = -1;
+
+      for (const candidate of providerTemplates) {
+        const candidateExtracted = TemplateMatcherUtil.extractValues(body, candidate.template);
+        const candidateScore = this.calculateExtractionScore(candidateExtracted, candidate.hashTable as Record<string, unknown> | null);
+
+        console.log(`[Mapper] Candidate ${provider}/${candidate.variant} score: ${candidateScore.toFixed(1)}%`);
+
+        if (candidateScore > bestScore) {
+          bestScore = candidateScore;
+          bestTemplate = candidate;
+          bestExtractedValues = candidateExtracted;
+        }
+      }
+
+      if (bestScore >= 75) {
+        template = bestTemplate.template;
+        variant = bestTemplate.variant;
+        extractedValues = bestExtractedValues;
+        selectedScore = bestScore;
+        console.log(`[Mapper] ✓ Selected best cached template: ${provider}/${variant} (${bestScore.toFixed(1)}%)`);
+      } else {
+        console.log(`[Mapper] All cached templates scored <75% (best: ${bestScore.toFixed(1)}%). Regenerating...`);
+
+        const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, normalizedBookingType);
+        template = generatedTemplate.template;
+        variant = generatedTemplate.variant;
+
+        if (!this.isValidVariant(variant)) {
+          console.warn(`[Mapper] ⚠️  Invalid variant returned by LLM: "${variant}". Valid variants are: ${this.VALID_VARIANTS.join(', ')}`);
+          throw new Error(`Invalid variant "${variant}" returned by LLM`);
+        }
+
+        const hashTable = HashContextUtil.extractHashTable(template);
+        const existingVariantTemplate = providerTemplates.find((item) => item.variant === variant);
+
+        if (existingVariantTemplate) {
+          await this.templateRuleDAO.update(provider, variant, template, hashTable);
+          console.log(`[Mapper] ✓ Updated existing template: ${provider}/${variant}`);
+        } else {
+          await this.templateRuleDAO.create(provider, variant, template, hashTable);
+          console.log(`[Mapper] ✓ Created new template variant: ${provider}/${variant}`);
+        }
+
+        extractedValues = TemplateMatcherUtil.extractValues(body, template);
+        selectedScore = this.calculateExtractionScore(extractedValues, hashTable as Record<string, unknown>);
+      }
+    } else {
+      console.log(`[Mapper] No template found for provider: ${provider}. Generating first template...`);
+
       const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, normalizedBookingType);
       template = generatedTemplate.template;
-      
-      // Extract hashTable from generated template
+      variant = generatedTemplate.variant;
+
+      if (!this.isValidVariant(variant)) {
+        console.warn(`[Mapper] ⚠️  Invalid variant returned by LLM: "${variant}". Valid variants are: ${this.VALID_VARIANTS.join(', ')}`);
+        throw new Error(`Invalid variant "${variant}" returned by LLM`);
+      }
+
       const hashTable = HashContextUtil.extractHashTable(template);
-      console.log(`[Mapper] Generated template with ${Object.keys(hashTable).length} field contexts`);
-      
-      // Save template with hashTable
-      await this.templateRuleDAO.create(provider, template, hashTable);
-      console.log('[Mapper] Template and hashTable cached for future use');
-    } else {
-      console.log(`[Mapper] Using cached template for provider: ${provider}`);
-      template = templateData.template;
+      await this.templateRuleDAO.create(provider, variant, template, hashTable);
+      console.log(`[Mapper] ✓ Created first template variant: ${provider}/${variant}`);
+
+      extractedValues = TemplateMatcherUtil.extractValues(body, template);
+      selectedScore = this.calculateExtractionScore(extractedValues, hashTable as Record<string, unknown>);
     }
 
-    // Step 2: Extract values using template matcher
-    const extractedValues = TemplateMatcherUtil.extractValues(body, template);
-    console.log('[Mapper] Extracted values:');
+    console.log(`[Mapper] Extracted values with ${provider}/${variant} (score: ${selectedScore.toFixed(1)}%):`);
     console.log(JSON.stringify(extractedValues, null, 2));
+    
+    /* ========== VALIDATION DISABLED - COMMENTED OUT FOR TEMPLATE COMPETITION SYSTEM ==========
     
     // Validation: Check how many values were successfully extracted
     if (templateData?.hashTable && Object.keys(templateData.hashTable).length > 0) {
@@ -158,6 +266,10 @@ export class MapperService {
         }
       }
     }
+    
+    ========== END COMMENTED VALIDATION ==========
+    */
+    
     console.log('');
 
     // Step 3: Build nested object from flat extracted values
@@ -277,4 +389,68 @@ export class MapperService {
 
     return null;
   }
+
+  /**
+   * Sanitize provider name - if it looks random/scrambled, treat as "unknown"
+   * Detects: UUIDs, base64 strings, hashes, random character sequences
+   */
+  private sanitizeProviderName(provider: string): string {
+    if (!provider) return 'unknown';
+
+    const cleaned = provider.trim().toLowerCase();
+
+    // Known valid providers - list can be expanded
+    const knownProviders = [
+      'irctc',
+      'cleartrip',
+      'makemytrip',
+      'goibibo',
+      'paytm',
+      'yatra',
+      'skyscanner',
+      'expedia',
+      'booking',
+      'hoteltonight',
+      'airbnb',
+      'uber',
+      'ola',
+    ];
+
+    // If it matches a known provider, return as-is
+    if (knownProviders.some((known) => cleaned.includes(known))) {
+      return cleaned;
+    }
+
+    // Check if it looks like a UUID (8-4-4-4-12 hex pattern)
+    if (/^[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}$/i.test(cleaned)) {
+      console.warn(`[Mapper] Provider appears to be UUID: "${provider}" - treating as unknown`);
+      return 'unknown';
+    }
+
+    // Check if it looks like base64 (mostly alphanumeric + special chars, >20 chars)
+    if (cleaned.length > 20 && /^[a-zA-Z0-9+/_=-]+$/.test(cleaned)) {
+      console.warn(`[Mapper] Provider appears to be base64 encoded: "${provider}" - treating as unknown`);
+      return 'unknown';
+    }
+
+    // Check if it looks like a hash (hex string, 32+ chars)
+    if (cleaned.length >= 32 && /^[a-f0-9]+$/.test(cleaned)) {
+      console.warn(`[Mapper] Provider appears to be hash: "${provider}" - treating as unknown`);
+      return 'unknown';
+    }
+
+    // Check if it has too many numbers or special chars (likely random)
+    const specialCharCount = (cleaned.match(/[^a-z0-9]/g) || []).length;
+    const numberCount = (cleaned.match(/\d/g) || []).length;
+    const letterCount = (cleaned.match(/[a-z]/g) || []).length;
+
+    if (cleaned.length > 10 && specialCharCount > letterCount) {
+      console.warn(`[Mapper] Provider appears to be scrambled: "${provider}" - treating as unknown`);
+      return 'unknown';
+    }
+
+    // If it passes all checks, return the cleaned version
+    return cleaned;
+  }
 }
+
