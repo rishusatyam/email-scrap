@@ -34,37 +34,49 @@ INSTRUCTIONS
 8. **DO NOT annotate email headers (From:, To:, Date:, Subject:)**
 9. **DO NOT annotate forwarded message markers**
 10. Only annotate actual flight booking data values
-11. **STRICT CHECK (MANDATORY)**: Never repeat any placeholder key. Each field placeholder can appear at most once (0 or 1 time) in the final template.
-12. If multiple candidate locations exist for the same field, keep only one BEST-MATCH occurrence and leave all other occurrences as plain text.
-13. **STRUCTURE-FIRST RULE**: Prefer label-based extraction over visual guessing
-14. **BOUNDARY RULE**: Annotate a value only when its left and right boundaries are clear from nearby text
-15. **NO ADJACENT PLACEHOLDERS**: Never output {a}{b}; there must be literal text between placeholders
-16. **AMBIGUITY RULE**: If a value cannot be mapped confidently, do not guess; leave it unannotated
-17. **FIELD SIZE RULE**: Each placeholder must map to a small precise value, never a large paragraph or multi-line unrelated block
-18. **MULTI-JOURNEY RULE**: If onward/return or multiple flight legs exist, annotate only the FIRST journey/segment
-19. **DENSE BLOCK RULE**: Ignore dense/unstructured sections like full traveller tables, meal/seat matrices, cancellation policy, legal terms
+11. **MULTI-PASSENGER RULE**: If booking has multiple passengers, create {passenger.name} and {passenger.seatNumber} placeholders for EACH passenger (ignore duplicate-key rule for these fields only).
+12. **STRICT CHECK (MANDATORY)**: Never repeat any placeholder key. Each field placeholder can appear at most once (0 or 1 time) in the final template.
+12. **STRICT CHECK (MANDATORY)**: Never repeat any placeholder key. Each field placeholder can appear at most once (0 or 1 time) in the final template.
+13. If multiple candidate locations exist for the same field, keep only one BEST-MATCH occurrence and leave all other occurrences as plain text.
+14. **STRUCTURE-FIRST RULE**: Prefer label-based extraction over visual guessing
+15. **BOUNDARY RULE**: Annotate a value only when its left and right boundaries are clear from nearby text
+16. **NO ADJACENT PLACEHOLDERS**: Never output {a}{b}; there must be literal text between placeholders
+17. **AMBIGUITY RULE**: If a value cannot be mapped confidently, do not guess; leave it unannotated
+18. **FIELD SIZE RULE**: Each placeholder must map to a small precise value, never a large paragraph or multi-line unrelated block
+19. **ROUNDTRIP/MULTI-SEGMENT RULE**: If booking has ROUNDTRIP or MULTIPLE flight legs (direct, roundtrip, or connecting):
+    - For SINGLE leg (direct): Use normal field names: {flight.flightNumber}, {departure.airport}, etc.
+    - For ROUNDTRIP (outbound + return): Use segment indices for EACH leg: {segments[0].flight.flightNumber}, {segments[1].flight.flightNumber}, {segments[0].departure.airport}, {segments[1].departure.airport}, etc.
+    - For CONNECTING flights (2+ legs): Use segment indices: {segments[0].flight.flightNumber}, {segments[1].flight.flightNumber}, etc.
+20. **DENSE BLOCK RULE**: Ignore dense/unstructured sections like full traveller tables, meal/seat matrices, cancellation policy, legal terms
 
 ================================
 FLIGHT-SPECIFIC FIELD MAPPING
 ================================
 
 **Flight Information:**
-- Flight number → {flight.flightNumber}
-- Airline name → {flight.airline}
+- Flight number → {flight.flightNumber} (single leg) OR {segments[0].flight.flightNumber}, {segments[1].flight.flightNumber} (roundtrip/connecting)
+- Airline name → {flight.airline} (single leg) OR {segments[0].flight.airline}, {segments[1].flight.airline} (roundtrip/connecting)
 
-**Departure:**
-- Departure airport name → {departure.airport}
-- Airport code (DEL, BOM, BLR, etc.) → {departure.airportCode}
-- Terminal → {departure.terminal}
-- Gate → {departure.gate}
-- Departure date and time → {departure.scheduledTime}
+**Departure (OUTBOUND leg for roundtrip):**
+- Departure airport name → {departure.airport} OR {segments[0].departure.airport}
+- Airport code → {departure.airportCode} OR {segments[0].departure.airportCode}
+- Terminal → {departure.terminal} OR {segments[0].departure.terminal}
+- Gate → {departure.gate} OR {segments[0].departure.gate}
+- Departure date and time → {departure.scheduledTime} OR {segments[0].departure.scheduledTime}
 
-**Arrival:**
-- Arrival airport name → {arrival.airport}
-- Airport code → {arrival.airportCode}
-- Terminal → {arrival.terminal}
-- Gate → {arrival.gate}
-- Arrival date and time → {arrival.scheduledTime}
+**Arrival (OUTBOUND leg for roundtrip):**
+- Arrival airport name → {arrival.airport} OR {segments[0].arrival.airport}
+- Airport code → {arrival.airportCode} OR {segments[0].arrival.airportCode}
+- Terminal → {arrival.terminal} OR {segments[0].arrival.terminal}
+- Gate → {arrival.gate} OR {segments[0].arrival.gate}
+- Arrival date and time → {arrival.scheduledTime} OR {segments[0].arrival.scheduledTime}
+
+**Return Segment (ONLY for roundtrip/connecting):**
+- Return flight number → {segments[1].flight.flightNumber}
+- Return departure airport → {segments[1].departure.airport}
+- Return departure time → {segments[1].departure.scheduledTime}
+- Return arrival airport → {segments[1].arrival.airport}
+- Return arrival time → {segments[1].arrival.scheduledTime}
 
 **Passenger:**
 - Passenger name → {passenger.name}

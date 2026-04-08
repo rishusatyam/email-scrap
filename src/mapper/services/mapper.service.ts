@@ -48,7 +48,7 @@ export class MapperService {
   }
 
   private calculateExtractionScore(
-    extractedValues: Record<string, string | null>,
+    extractedValues: Record<string, string | string[] | null>,
     hashTable: Record<string, unknown> | null
   ): number {
     const totalFields = hashTable && Object.keys(hashTable).length > 0
@@ -59,7 +59,11 @@ export class MapperService {
       return 0;
     }
 
-    const extractedFields = Object.values(extractedValues).filter((value) => value !== null && value !== '').length;
+    const extractedFields = Object.values(extractedValues).filter((value) => {
+      if (value === null || value === '') return false;
+      if (Array.isArray(value)) return value.length > 0;
+      return true;
+    }).length;
     return (extractedFields / totalFields) * 100;
   }
 
@@ -76,21 +80,21 @@ export class MapperService {
     let provider = request.provider;
 
     // Sanitize provider name for testing purposes - if it looks random/scrambled, treat as unknown
-    provider = this.sanitizeProviderName(provider);
+    // provider = this.sanitizeProviderName(provider);
 
     // Step 1: Compete all templates for this provider and select the best by extraction score
     const providerTemplates = await this.templateRuleDAO.findAllByProvider(provider);
 
     let template: string;
     let variant = 'unknown';
-    let extractedValues: Record<string, string | null> = {};
+    let extractedValues: Record<string, string | string[] | null> = {};
     let selectedScore = 0;
 
     if (providerTemplates.length > 0) {
       console.log(`[Mapper] Found ${providerTemplates.length} cached templates for provider: ${provider}`);
 
       let bestTemplate = providerTemplates[0];
-      let bestExtractedValues: Record<string, string | null> = {};
+      let bestExtractedValues: Record<string, string | string[] | null> = {};
       let bestScore = -1;
 
       for (const candidate of providerTemplates) {
@@ -106,14 +110,14 @@ export class MapperService {
         }
       }
 
-      if (bestScore >= 75) {
+      if (bestScore >= 90) {
         template = bestTemplate.template;
         variant = bestTemplate.variant;
         extractedValues = bestExtractedValues;
         selectedScore = bestScore;
         console.log(`[Mapper] ✓ Selected best cached template: ${provider}/${variant} (${bestScore.toFixed(1)}%)`);
       } else {
-        console.log(`[Mapper] All cached templates scored <75% (best: ${bestScore.toFixed(1)}%). Regenerating...`);
+        console.log(`[Mapper] All cached templates scored <90% (best: ${bestScore.toFixed(1)}%). Regenerating...`);
 
         const generatedTemplate = await this.llmService.generateTemplate(body, schema, provider, normalizedBookingType);
         template = generatedTemplate.template;
@@ -158,9 +162,6 @@ export class MapperService {
       selectedScore = this.calculateExtractionScore(extractedValues, hashTable as Record<string, unknown>);
     }
 
-    console.log(`[Mapper] Extracted values with ${provider}/${variant} (score: ${selectedScore.toFixed(1)}%):`);
-    console.log(JSON.stringify(extractedValues, null, 2));
-    
     /* ========== VALIDATION DISABLED - COMMENTED OUT FOR TEMPLATE COMPETITION SYSTEM ==========
     
     // Validation: Check how many values were successfully extracted
@@ -281,7 +282,7 @@ export class MapperService {
   }
 
   private finalizeMappedResult(
-    extractedValues: Record<string, string | null>,
+    extractedValues: Record<string, string | string[] | null>,
     body: string,
     bookingType: string,
     schema: Record<string, any>,
@@ -320,7 +321,44 @@ export class MapperService {
       }
     }
 
+    // For flights, handle multi-passenger arrays from template extraction
+    if (bookingType === 'flight') {
+      const passengerNames = nextExtractedValues['passenger.name'];
+      const passengerSeats = nextExtractedValues['passenger.seatNumber'];
+
+      // If passenger data is arrays (from multi-passenger template extraction)
+      if (Array.isArray(passengerNames) || Array.isArray(passengerSeats)) {
+        const names = Array.isArray(passengerNames) ? passengerNames : (passengerNames ? [passengerNames] : []);
+        const seats = Array.isArray(passengerSeats) ? passengerSeats : (passengerSeats ? [passengerSeats] : []);
+
+        passengers = names.map((name, index) => ({
+          name: name || undefined,
+          seatNumber: seats[index] || undefined,
+        }));
+
+        // Remove passenger fields from nextExtractedValues since we're moving to passengers array
+        delete nextExtractedValues['passenger.name'];
+        delete nextExtractedValues['passenger.seatNumber'];
+      }
+    }
+
     const mappedData = TemplateMatcherUtil.buildNestedObject(nextExtractedValues);
+
+    // For roundtrip/multi-segment flights, handle segments array
+    if (bookingType === 'flight' && mappedData.segments && Array.isArray(mappedData.segments) && mappedData.segments.length > 0) {
+      // const firstSegment = mappedData.segments[0];
+      
+      // COMMENTED OUT - Old backward compatibility code (duplicating first segment at root level)
+      // if (firstSegment && typeof firstSegment === 'object') {
+      //   // Use segment data for outbound flight
+      //   if (firstSegment.flight && !mappedData.flight) mappedData.flight = firstSegment.flight;
+      //   if (firstSegment.departure && !mappedData.departure) mappedData.departure = firstSegment.departure;
+      //   if (firstSegment.arrival && !mappedData.arrival) mappedData.arrival = firstSegment.arrival;
+      // }
+      
+      // Keep segments array for reference (roundtrip/connecting flights)
+      // It will be available in mappedData.segments
+    }
 
     if (bookingType === 'bus') {
       if (passengers.length > 0) {
@@ -343,6 +381,12 @@ export class MapperService {
 
       if (mappedData.passenger) {
         delete mappedData.passenger;
+      }
+    }
+
+    if (bookingType === 'flight') {
+      if (passengers.length > 0) {
+        mappedData.passengers = passengers;
       }
     }
 
@@ -398,59 +442,9 @@ export class MapperService {
     if (!provider) return 'unknown';
 
     const cleaned = provider.trim().toLowerCase();
-
-    // Known valid providers - list can be expanded
-    const knownProviders = [
-      'irctc',
-      'cleartrip',
-      'makemytrip',
-      'goibibo',
-      'paytm',
-      'yatra',
-      'skyscanner',
-      'expedia',
-      'booking',
-      'hoteltonight',
-      'airbnb',
-      'uber',
-      'ola',
-    ];
-
-    // If it matches a known provider, return as-is
-    if (knownProviders.some((known) => cleaned.includes(known))) {
-      return cleaned;
-    }
-
-    // Check if it looks like a UUID (8-4-4-4-12 hex pattern)
-    if (/^[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}$/i.test(cleaned)) {
-      console.warn(`[Mapper] Provider appears to be UUID: "${provider}" - treating as unknown`);
-      return 'unknown';
-    }
-
-    // Check if it looks like base64 (mostly alphanumeric + special chars, >20 chars)
-    if (cleaned.length > 20 && /^[a-zA-Z0-9+/_=-]+$/.test(cleaned)) {
-      console.warn(`[Mapper] Provider appears to be base64 encoded: "${provider}" - treating as unknown`);
-      return 'unknown';
-    }
-
-    // Check if it looks like a hash (hex string, 32+ chars)
-    if (cleaned.length >= 32 && /^[a-f0-9]+$/.test(cleaned)) {
-      console.warn(`[Mapper] Provider appears to be hash: "${provider}" - treating as unknown`);
-      return 'unknown';
-    }
-
-    // Check if it has too many numbers or special chars (likely random)
-    const specialCharCount = (cleaned.match(/[^a-z0-9]/g) || []).length;
-    const numberCount = (cleaned.match(/\d/g) || []).length;
-    const letterCount = (cleaned.match(/[a-z]/g) || []).length;
-
-    if (cleaned.length > 10 && specialCharCount > letterCount) {
-      console.warn(`[Mapper] Provider appears to be scrambled: "${provider}" - treating as unknown`);
-      return 'unknown';
-    }
-
-    // If it passes all checks, return the cleaned version
-    return cleaned;
+    const randomNumber = Math.floor(Math.random() * 10000);
+    
+    return `${cleaned}_${randomNumber}`;
   }
 }
 

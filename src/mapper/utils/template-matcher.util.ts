@@ -3,10 +3,10 @@ export class TemplateMatcherUtil {
    * Extracts values from email by matching against annotated template
    * @param emailBody - Original email text
    * @param template - Annotated template with {fieldPath} placeholders
-   * @returns Object with field paths as keys and extracted values
+   * @returns Object with field paths as keys and extracted values (arrays for multi-passenger fields)
    */
-  static extractValues(emailBody: string, template: string): Record<string, string | null> {
-    const extractedValues: Record<string, string | null> = {};
+  static extractValues(emailBody: string, template: string): Record<string, string | string[] | null> {
+    const extractedValues: Record<string, string | string[] | null> = {};
 
     // Normalize text for matching while preserving line boundaries.
     const normalizedEmail = this.normalizeWhitespace(emailBody);
@@ -146,9 +146,24 @@ export class TemplateMatcherUtil {
         const safeValue = this.applyFieldSafety(fieldName, cleanedValue);
         const currentValue = extractedValues[fieldName];
 
-        // Keep the first non-empty value when placeholders repeat in template.
-        if (currentValue === undefined || currentValue === null || currentValue === '') {
-          extractedValues[fieldName] = safeValue;
+        // For multi-passenger fields, collect all occurrences into array
+        const multiPassengerFields = ['passenger.name', 'passenger.seatNumber'];
+        if (multiPassengerFields.includes(fieldName)) {
+          if (Array.isArray(currentValue)) {
+            // Already an array, push new value
+            if (safeValue) currentValue.push(safeValue);
+          } else if (currentValue) {
+            // Convert to array, filter out null/empty values
+            extractedValues[fieldName] = [currentValue, safeValue].filter((v): v is string => v !== null && v !== '');
+          } else if (safeValue) {
+            // First occurrence
+            extractedValues[fieldName] = [safeValue];
+          }
+        } else {
+          // Keep the first non-empty value for non-multi-passenger fields
+          if (currentValue === undefined || currentValue === null || currentValue === '') {
+            extractedValues[fieldName] = safeValue;
+          }
         }
 
         let nextEmailPosition = valueEndIndex;
@@ -300,20 +315,55 @@ export class TemplateMatcherUtil {
     let current = obj;
 
     for (let i = 0; i < keys.length - 1; i++) {
-      const key = keys[i];
-      if (!current[key] || typeof current[key] !== 'object') {
-        current[key] = {};
+      let key = keys[i];
+      let isArrayAccess = false;
+      let arrayIndex = -1;
+
+      // Check if key has array notation like "segments[0]"
+      const arrayMatch = key.match(/^(.+?)\[(\d+)\]$/);
+      if (arrayMatch) {
+        isArrayAccess = true;
+        key = arrayMatch[1];
+        arrayIndex = parseInt(arrayMatch[2], 10);
       }
-      current = current[key];
+
+      if (isArrayAccess) {
+        // Handle array access
+        if (!Array.isArray(current[key])) {
+          current[key] = [];
+        }
+        if (!current[key][arrayIndex]) {
+          current[key][arrayIndex] = {};
+        }
+        current = current[key][arrayIndex];
+      } else {
+        // Handle object access
+        if (!current[key] || typeof current[key] !== 'object') {
+          current[key] = {};
+        }
+        current = current[key];
+      }
     }
 
-    current[keys[keys.length - 1]] = value;
+    // Handle final key which might also be array notation
+    let finalKey = keys[keys.length - 1];
+    const arrayMatch = finalKey.match(/^(.+?)\[(\d+)\]$/);
+    if (arrayMatch) {
+      const key = arrayMatch[1];
+      const arrayIndex = parseInt(arrayMatch[2], 10);
+      if (!Array.isArray(current[key])) {
+        current[key] = [];
+      }
+      current[key][arrayIndex] = value;
+    } else {
+      current[finalKey] = value;
+    }
   }
 
   /**
    * Converts flat extracted values to nested object structure
    */
-  static buildNestedObject(extractedValues: Record<string, string | null>): Record<string, any> {
+  static buildNestedObject(extractedValues: Record<string, string | string[] | null>): Record<string, any> {
     const result: Record<string, any> = {};
 
     for (const [path, value] of Object.entries(extractedValues)) {
