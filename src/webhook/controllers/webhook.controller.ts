@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { enqueueGmailHistory, enqueueEmailFetch } from '../queues/queue';
 import { findSubscriptionById } from '../dao/subscription.dao';
 import { findMailboxByEmail } from '../../auth/dao/mailbox.dao';
-import { writeToFile } from '../utils/webhook-logger';
 
 // ─── Gmail Webhook ────────────────────────────────────────────────────────────
 // Google Pub/Sub pushes a base64-encoded payload containing emailAddress + historyId
@@ -199,7 +198,13 @@ export const handleOutlookWebhook = async (req: Request, res: Response) => {
 
       const emailAddress = subscription.mailbox.emailAddress;
       console.log(`[Webhook:Outlook] [${i + 1}] Resolved mailbox: ${emailAddress} | mailboxId=${subscription.mailboxId}`);
-      const jobId = await enqueueEmailFetch({ provider: 'outlook', emailAddress, messageId });
+      const jobId = await enqueueEmailFetch({
+        provider: 'outlook',
+        emailAddress,
+        mailboxId: subscription.mailbox.id,
+        messageId,
+        source: 'webhook'
+      });
       console.log(`[Webhook:Outlook] [${i + 1}] Enqueued fetch | jobId=${jobId} | messageId=${messageId} | email=${emailAddress}`);
     }
 

@@ -1,0 +1,195 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.travlrid.com/rail-booking/v1",
+  "title": "Rail Booking",
+  "description": "Rail travel booking with booking details",
+  "type": "object",
+  "required": ["bookingId", "bookingType", "train", "departure", "arrival", "profile_id"],
+  "properties": {
+    "profile_id": {
+      "type": "string"
+    },
+
+    "bookingId": {
+      "type": "string"
+    },
+
+    "bookingType": {
+      "type": "string",
+      "enum": ["rail"],
+      "default": "rail"
+    },
+
+    "bookingReference": {
+      "type": ["string", "null"]
+    },
+
+    "status": {
+      "type": "string",
+      "enum": ["confirmed", "pending", "cancelled", "completed"]
+    },
+
+    "train": {
+      "type": "object",
+      "required": ["operator", "trainNumber"],
+      "properties": {
+        "operator": {
+          "type": "string"
+        },
+        "trainNumber": {
+          "type": "string"
+        },
+        "trainName": {
+          "type": ["string", "null"]
+        },
+        "trainType": {
+          "type": ["string", "null"],
+          "enum": ["high_speed", "intercity", "regional", "metro", "other", null]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "departure": {
+      "type": "object",
+      "required": ["station", "scheduledTime"],
+      "properties": {
+        "station": {
+          "type": "string"
+        },
+        "stationCode": {
+          "type": ["string", "null"]
+        },
+        "platform": {
+          "type": ["string", "null"]
+        },
+        "scheduledTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actualTime": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "arrival": {
+      "type": "object",
+      "required": ["station", "scheduledTime"],
+      "properties": {
+        "station": {
+          "type": "string"
+        },
+        "stationCode": {
+          "type": ["string", "null"]
+        },
+        "platform": {
+          "type": ["string", "null"]
+        },
+        "scheduledTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actualTime": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "passengers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "ticketNumber": {
+            "type": ["string", "null"]
+          },
+          "seatNumber": {
+            "type": ["string", "null"]
+          },
+          "coach": {
+            "type": ["string", "null"]
+          },
+          "class": {
+            "type": ["string", "null"]
+          },
+          "seatType": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "fare": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": ["number", "null"]
+        },
+        "currency": {
+          "type": ["string", "null"]
+        },
+        "fareClass": {
+          "type": ["string", "null"]
+        },
+        "fareType": {
+          "type": ["string", "null"],
+          "enum": ["standard", "flexible", "saver", "business", null]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "services": {
+      "type": "object",
+      "properties": {
+        "wifi": {
+          "type": ["boolean", "null"]
+        },
+        "meals": {
+          "type": ["boolean", "null"]
+        },
+        "powerOutlet": {
+          "type": ["boolean", "null"]
+        },
+        "specialRequests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": ["string", "null"]
+        },
+        "bookingDate": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

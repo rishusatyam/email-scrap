@@ -1,30 +1,54 @@
 import axios from 'axios';
 import * as mailboxDao from '../../auth/dao/mailbox.dao';
+import { processGmailEmail, processOutlookEmail } from '../../email-normalizer/services/email-normalizer.service';
+import { GmailMessage, OutlookMessage } from '../../email-normalizer/types/email.types';
+import { quickFilterGmail } from '../../classification/gmail-quick-filter.service';
+import { quickFilterOutlook } from '../../classification/outlook-quick-filter.service';
 import { writeToFile } from '../utils/webhook-logger';
 
 interface FetchEmailData {
   provider: 'gmail' | 'outlook';
-  emailAddress: string;
+  emailAddress?: string;
+  mailboxId?: string;
   messageId: string;
+  source?: 'webhook' | 'gmail-history' | 'backfill';
 }
+
+const sanitizeForFileName = (value: string): string =>
+  value.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').replace(/\s+/g, '_');
 
 // Called by the email-fetch worker
 // Fetches a single raw email from Gmail or Outlook and logs the response
-export const fetchEmail = async ({ provider, emailAddress, messageId }: FetchEmailData) => {
-  console.log(`[EmailFetch] Fetching messageId=${messageId} | provider=${provider} | email=${emailAddress}`);
+export const fetchEmail = async ({ provider, emailAddress, mailboxId, messageId, source }: FetchEmailData) => {
+  console.log(
+    `[EmailFetch] Fetching messageId=${messageId} | provider=${provider} | email=${emailAddress || 'n/a'} | mailboxId=${mailboxId || 'n/a'} | source=${source || 'unknown'}`
+  );
 
   // 1. Load mailbox from DB
-  const mailbox = await mailboxDao.findMailboxByEmail(emailAddress, provider);
-  if (!mailbox) {
-    console.error(`[EmailFetch] Mailbox not found for ${emailAddress} (${provider})`);
-    throw new Error(`[EmailFetch] Mailbox not found for ${emailAddress} (${provider})`);
+  let mailbox = null;
+
+  if (emailAddress) {
+    mailbox = await mailboxDao.findMailboxByEmail(emailAddress, provider);
   }
-  console.log(`[EmailFetch] Mailbox loaded | mailboxId=${mailbox.id} | email=${emailAddress}`);
+
+  if (!mailbox && mailboxId) {
+    mailbox = await mailboxDao.findMailboxById(mailboxId);
+    if (mailbox && mailbox.provider !== provider) {
+      mailbox = null;
+    }
+  }
+
+  if (!mailbox) {
+    const identity = emailAddress || mailboxId || 'unknown identity';
+    console.error(`[EmailFetch] Mailbox not found for ${identity} (${provider})`);
+    throw new Error(`[EmailFetch] Mailbox not found for ${identity} (${provider})`);
+  }
+  console.log(`[EmailFetch] Mailbox loaded | mailboxId=${mailbox.id} | email=${mailbox.emailAddress}`);
 
   // 2. Check token expiry before making API call
   if (mailbox.tokenExpiry && mailbox.tokenExpiry < new Date()) {
-    console.warn(`[EmailFetch] Access token may be expired for ${emailAddress} | expiry=${mailbox.tokenExpiry.toISOString()}`);
-    throw new Error(`[EmailFetch] Token expired for ${emailAddress} — retry later`);
+    console.warn(`[EmailFetch] Access token may be expired for ${mailbox.emailAddress} | expiry=${mailbox.tokenExpiry.toISOString()}`);
+    throw new Error(`[EmailFetch] Token expired for ${mailbox.emailAddress} — retry later`);
   }
 
   // 3. Get access token (plain text for now — TODO: decrypt in production)
@@ -45,8 +69,52 @@ export const fetchEmail = async ({ provider, emailAddress, messageId }: FetchEma
 
     // 5. Save raw email to file
     console.log(`[EmailFetch] Successfully fetched email | messageId=${messageId} | provider=${provider}`);
-    const fileName = `${provider}_${emailAddress.replace('@', '_')}_${messageId}.json`;
+    const safeEmail = sanitizeForFileName(mailbox.emailAddress.replace('@', '_'));
+    const safeMessageId = sanitizeForFileName(messageId);
+    const fileName = `${provider}_${safeEmail}_${safeMessageId}.json`;
     writeToFile(fileName, rawEmail);
+
+    if (provider === 'outlook') {
+      const filterResult = quickFilterOutlook(rawEmail as OutlookMessage);
+
+      if (!filterResult.isBooking) {
+        console.log(
+          `[EmailFetch] Quick filter skipped email | provider=${provider} | messageId=${messageId} | score=${filterResult.score} | reasons=${filterResult.reasons.join('; ')}`
+        );
+        return;
+      }
+
+      console.log(
+        `[EmailFetch] Quick filter passed | provider=${provider} | messageId=${messageId} | score=${filterResult.score} | reasons=${filterResult.reasons.join('; ')}`
+      );
+    } else if (provider === 'gmail') {
+      const filterResult = quickFilterGmail(rawEmail as GmailMessage);
+
+      if (!filterResult.isBooking) {
+        console.log(
+          `[EmailFetch] Quick filter skipped email | provider=${provider} | messageId=${messageId} | score=${filterResult.score} | reasons=${filterResult.reasons.join('; ')}`
+        );
+        return;
+      }
+
+      console.log(
+        `[EmailFetch] Quick filter passed | provider=${provider} | messageId=${messageId} | score=${filterResult.score} | reasons=${filterResult.reasons.join('; ')}`
+      );
+    }
+
+    if (provider === 'gmail') {
+      const normalizedEmail = await processGmailEmail(rawEmail as GmailMessage, {
+        accessToken,
+      });
+      const normalizedFileName = `normalized_${provider}_${safeEmail}_${safeMessageId}.json`;
+      writeToFile(normalizedFileName, normalizedEmail);
+    } else if (provider === 'outlook') {
+      const normalizedEmail = await processOutlookEmail(rawEmail as OutlookMessage, {
+        accessToken,
+      });
+      const normalizedFileName = `normalized_${provider}_${safeEmail}_${safeMessageId}.json`;
+      writeToFile(normalizedFileName, normalizedEmail);
+    }
   } catch (error: any) {
     console.error(`[EmailFetch] Error fetching email: ${error.message}`);
     throw error;

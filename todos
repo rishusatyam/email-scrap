@@ -1,0 +1,25 @@
+task - to be done (today)
+1. linked the pdf extractor with gmail normalizer -------------> done (testing left)
+2. organize the respocne that what needed to be sended to the mapper servide(means clean the respocne into clean struture ) and based on it fix the input validation of tha mapping service 
+3. link the webhook service with email-normalizing service pass the same acces token that it use for fetching the data email becasue email-normalizer will also use it to fetch the pdf  -----done and tetsted 
+4. link the gmail cleaning service with mapping service (most important)  ----- done also link outlook 
+5. also if needed link auth and subscription part so when user login subcscription should be done that time 
+6. after linking test all once 
+7. aftr completing all stuff need a discussion with ayush that  pdf of htmlbody ? beacsue both have same data so we only need to send one 
+
+
+
+***************************************************************************
+need enhancement in future
+
+renewal of outlook is done and renewal of gmail is left need to be done in future 
+
+
+--> classifier filter is done for outlook its amazing also done for gmail but need ehnacemnet we have ti add validation after it decode the data so we also implmnet that there a validation simple alyer on its htmlbody (less priority for now)
+
+
+--> need a research on expiration date on while creating subscription
+
+----> oulook back fill is fine next an gmail case backfill is done ssmall layer of validator should be there in gmail because there need some research in it ----(high priority)
+
+--> multi-passenger mapping is implemented for bus only (done) ---> implement multi-passenger mapping for flight/hotel/car/rail later

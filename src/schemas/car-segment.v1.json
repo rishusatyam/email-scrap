@@ -1,0 +1,211 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.travlrid.com/car-booking/v1",
+  "title": "Car Booking",
+  "description": "Car rental booking with booking details",
+  "type": "object",
+  "required": ["bookingId", "bookingType", "vehicle", "pickup", "dropoff", "profile_id"],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "Profile ID this segment belongs to"
+    },
+    "bookingId": {
+      "type": "string",
+      "description": "Unique identifier for the car booking"
+    },
+    "bookingType": {
+      "type": "string",
+      "enum": ["car"],
+      "default": "car"
+    },
+    "bookingReference": {
+      "type": ["string", "null"],
+      "description": "Car rental confirmation number"
+    },
+    "status": {
+      "type": ["string", "null"],
+      "enum": ["confirmed", "pending", "cancelled", "completed", null],
+      "default": "confirmed"
+    },
+    "rentalCompany": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "code": {
+          "type": ["string", "null"]
+        },
+        "contactInfo": {
+          "type": "object",
+          "properties": {
+            "phone": {
+              "type": ["string", "null"]
+            },
+            "email": {
+              "type": ["string", "null"], 
+              "format": "email"
+            }
+          }
+        }
+      },
+      "required": ["name"]
+    },
+    "vehicle": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": ["economy", "compact", "midsize", "fullsize", "suv", "luxury", "van"]
+        },
+        "make": {
+          "type": ["string", "null"]
+        },
+        "model": {
+          "type": ["string", "null"]
+        },
+        "transmission": {
+          "type": ["string", "null"],
+          "enum": ["automatic", "manual", null]
+        },
+        "fuelType": {
+          "type": ["string", "null"],
+          "enum": ["petrol", "diesel", "electric", "hybrid", null]
+        },
+        "passengerCapacity": {
+          "type": ["integer", "null"]
+        },
+        "luggageCapacity": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "pickup": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string"
+        },
+        "address": {
+          "type": ["string", "null"]
+        },
+        "dateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "locationType": {
+          "type": "string",
+          "enum": ["airport", "city", "hotel", "station"]
+        }
+      },
+      "required": ["location", "dateTime"]
+    },
+    "dropoff": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "dateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "locationType": {
+          "type": ["string", "null"],
+          "enum": ["airport", "city", "hotel", "station", null]
+        }
+      },
+      "required": ["location", "dateTime"]
+    },
+    "driver": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": ["string", "null"]
+        },
+        "licenseNumber": {
+          "type": ["string", "null"]
+        },
+        "age": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "rate": {
+      "type": "object",
+      "properties": {
+        "totalAmount": {
+          "type": ["number", "null"]
+        },
+        "currency": {
+          "type": ["string", "null"]
+        },
+        "dailyRate": {
+          "type": ["number", "null"]
+        },
+        "numberOfDays": {
+          "type": ["integer", "null"]
+        },
+        "taxes": {
+          "type": ["number", "null"]
+        },
+        "fees": {
+          "type": ["number", "null"]
+        }
+      }
+    },
+    "insurance": {
+      "type": "object",
+      "properties": {
+        "coverage": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cost": {
+          "type": ["number", "null"]
+        }
+      }
+    },
+    "extras": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "cost": {
+            "type": ["number", "null"]
+          }
+        }
+      },
+      "description": "Additional items (GPS, child seat, etc.)"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "bookingDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

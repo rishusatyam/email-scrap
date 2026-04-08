@@ -1,0 +1,247 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.travlrid.com/flight-booking/v1",
+  "title": "Flight Booking",
+  "description": "Flight booking with complete travel details",
+  "type": "object",
+  "required": ["bookingId", "bookingType", "profile_id"],
+ 
+   "properties": {
+    "bookingId": {
+      "type": "string"
+    },
+    "bookingType": {
+      "type": "string",
+      "enum": ["flight"],
+      "default": "flight"
+    },
+    "bookingReference": {
+      "type": ["string", "null"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["confirmed", "pending", "cancelled", "completed"]
+    },
+    "profile_id": {
+      "type": "string"
+    },
+
+    "passengers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "ticketNumber": {
+            "type": ["string", "null"]
+          },
+          "seatNumber": {
+            "type": ["string", "null"]
+          },
+          "cabin": {
+            "type": ["string", "null"],
+            "enum": ["economy", "premium_economy", "business", "first", null]
+          },
+          "boardingGroup": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["segmentId", "airline", "airlineCode", "flightNumber", "departure", "arrival"],
+        "properties": {
+          "segmentId": {
+            "type": "string"
+          },
+          "airline": {
+            "type": "string"
+          },
+          "airlineCode": {
+            "type": "string"
+          },
+          "flightNumber": {
+            "type": "string"
+          },
+          "operatingAirline": {
+            "type": ["string", "null"]
+          },
+
+          "departure": {
+            "type": "object",
+            "required": ["airport", "airportCode", "scheduledTime"],
+            "properties": {
+              "airport": {
+                "type": "string"
+              },
+              "airportCode": {
+                "type": "string"
+              },
+              "terminal": {
+                "type": ["string", "null"]
+              },
+              "gate": {
+                "type": ["string", "null"]
+              },
+              "scheduledTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "actualTime": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          },
+
+          "arrival": {
+            "type": "object",
+            "required": ["airport", "airportCode", "scheduledTime"],
+            "properties": {
+              "airport": {
+                "type": "string"
+              },
+              "airportCode": {
+                "type": "string"
+              },
+              "terminal": {
+                "type": ["string", "null"]
+              },
+              "gate": {
+                "type": ["string", "null"]
+              },
+              "scheduledTime": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "actualTime": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          },
+
+          "duration": {
+            "type": ["string", "null"]
+          },
+          "status": {
+            "type": ["string", "null"],
+            "enum": ["scheduled", "delayed", "departed", "arrived", "cancelled", null]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "fare": {
+      "type": "object",
+      "properties": {
+        "amount": {
+          "type": ["number", "null"]
+        },
+        "currency": {
+          "type": ["string", "null"]
+        },
+        "fareClass": {
+          "type": ["string", "null"]
+        },
+        "fareType": {
+          "type": ["string", "null"],
+          "enum": ["economy", "business", "first", "premium_economy", null]
+        },
+        "taxes": {
+          "type": ["number", "null"]
+        },
+        "fees": {
+          "type": ["number", "null"]
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "baggage": {
+      "type": "object",
+      "properties": {
+        "checked": {
+          "type": "object",
+          "properties": {
+            "allowance": {
+              "type": ["number", "null"]
+            },
+            "weight": {
+              "type": ["number", "null"]
+            }
+          },
+          "additionalProperties": false
+        },
+        "cabin": {
+          "type": "object",
+          "properties": {
+            "allowance": {
+              "type": ["number", "null"]
+            },
+            "dimensions": {
+              "type": ["string", "null"]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "services": {
+      "type": "object",
+      "properties": {
+        "meal": {
+          "type": ["string", "null"]
+        },
+        "entertainment": {
+          "type": ["boolean", "null"]
+        },
+        "wifi": {
+          "type": ["boolean", "null"]
+        },
+        "specialRequests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": ["string", "null"]
+        },
+        "bookingDate": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
+

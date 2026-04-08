@@ -1,0 +1,74 @@
+import { Request, Response } from 'express';
+import { extractPdfFromGmail } from '../services/pdf.service';
+
+interface ExtractPdfRequest {
+  messageId: string;
+  attachmentId: string;
+  accessToken: string;
+}
+
+/**
+ * HTTP handler for extracting PDF from Gmail
+ */
+export const extractPdfHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { messageId, attachmentId, accessToken } = req.body as ExtractPdfRequest;
+   console.log("accessToken", accessToken);
+    // Validate input - check each field individually
+    if (!messageId) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing required field: messageId'
+      });
+      return;
+    }
+
+    if (!attachmentId) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing required field: attachmentId'
+      });
+      return;
+    }
+
+    if (!accessToken) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing required field: accessToken'
+      });
+      return;
+    }
+
+    // Extract PDF
+    const result = await extractPdfFromGmail(messageId, attachmentId, accessToken);
+
+    // Return response
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        file: result.file
+          ? {
+              originalname: result.file.originalname,
+              mimetype: result.file.mimetype,
+              size: result.file.size,
+            }
+          : undefined,
+        debugPath: result.debugPath
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Handler error: ${errorMessage}`);
+    
+    res.status(500).json({
+      success: false,
+      error: `Server error: ${errorMessage}`
+    });
+  }
+};
